@@ -13,14 +13,14 @@ import { CameraControls } from './cameraControls';
 import { InputController } from './input';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
-import { buildTestMap } from '../data/maps';
+import { MAPS, mapById } from '../data/maps';
 import { TILE } from '../core/const';
 import { FACTION_PALETTES } from './palette';
 
 export interface GameSceneConfig {
   factions: [FactionId, FactionId];
   seed: number;
-  mapAscii?: string;
+  mapId?: string;
   mode: 'play' | 'spectate';
 }
 
@@ -51,7 +51,8 @@ export class GameScene extends Phaser.Scene {
     bakeFaction(this, cfg.factions[0]);
     if (cfg.factions[1] !== cfg.factions[0]) bakeFaction(this, cfg.factions[1]);
 
-    const state = createGame({ mapAscii: cfg.mapAscii ?? buildTestMap(), seed: cfg.seed, factions: cfg.factions });
+    const mapDef = cfg.mapId ? mapById(cfg.mapId) : MAPS[cfg.seed % MAPS.length];
+    const state = createGame({ mapAscii: mapDef.ascii, seed: cfg.seed, factions: cfg.factions });
     this.runner = new SimRunner(state);
     // AI 연결: 대전 = P1만 / 관전 = 양측
     this.runner.ais =
@@ -171,6 +172,7 @@ export class GameScene extends Phaser.Scene {
         const pool: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'celestial'];
         const f0 = pool[(this.cfg.seed + 1) % pool.length];
         const f1 = pool[(this.cfg.seed + 4) % pool.length];
+        // 맵도 로테이션 (mapId 미지정 = seed 기반 선택)
         this.scene.restart({ factions: [f0, f1], seed: this.cfg.seed + 1, mode: 'spectate' } satisfies GameSceneConfig);
       });
       this.input.keyboard!.once('keydown-ESC', () => {
