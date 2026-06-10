@@ -31,9 +31,12 @@ export interface Unit {
   maxHp: number;
   shield: number; // 초능력자 패시브 등
   state: UnitState;
-  /** 이동 목적지 (타일 좌표) */
+  /** 이동 목적지 (타일 좌표) — 추격 등으로 매 틱 갱신될 수 있음 */
   destX: number;
   destY: number;
+  /** 명령 원목적지 — 교전 후 attackMove 재개 지점 (destX와 분리, 유실 방지) */
+  orderX: number;
+  orderY: number;
   /** 공격 대상 엔티티 id (유닛/건물) */
   targetId: EntityId | 0;
   attackCooldown: number; // 남은 틱
