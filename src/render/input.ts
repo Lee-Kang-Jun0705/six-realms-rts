@@ -12,7 +12,7 @@ import { BUILDING_STATS } from '../data/baseline';
 import { TILE } from '../core/const';
 import { distSq } from '../core/vec';
 
-export type InputMode = 'normal' | 'attackTarget' | { build: BuildingKind };
+export type InputMode = 'normal' | 'attackTarget' | { build: BuildingKind } | { cast: string };
 
 export class InputController {
   mode: InputMode = 'normal';
@@ -67,6 +67,11 @@ export class InputController {
   }
 
   private onLeftDown(p: Phaser.Input.Pointer): void {
+    if (typeof this.mode === 'object' && 'cast' in this.mode) {
+      this.tryCast(p, this.mode.cast);
+      this.mode = 'normal';
+      return;
+    }
     if (typeof this.mode === 'object') {
       this.tryPlaceBuilding(p);
       return;
@@ -220,6 +225,43 @@ export class InputController {
     }
   }
 
+  /** 스펠 시전 (HUD 버튼 → 지점 클릭) */
+  private tryCast(p: Phaser.Input.Pointer, spellId: string): void {
+    const w = this.world(p);
+    const casters = this.selection().filter((id) => this.state.units.find((u) => u.id === id && u.role === 'caster'));
+    if (casters.length === 0) {
+      this.onToast('술사를 선택하세요');
+      return;
+    }
+    const cmd: Parameters<SimRunner['enqueue']>[0] = {
+      type: 'cast', player: this.player, unitIds: casters, spellId, x: w.x, y: w.y,
+    };
+    if (spellId === 'sacrifice') {
+      // 클릭 지점 최근접 아군 유닛을 제물로
+      let best = 0;
+      let bestD = 1.2;
+      for (const u of this.state.units) {
+        if (u.player !== this.player || u.role === 'caster') continue;
+        const d = distSq(u.x, u.y, w.x, w.y);
+        if (d < bestD) {
+          bestD = d;
+          best = u.id;
+        }
+      }
+      if (!best) {
+        this.onToast('제물로 삼을 아군을 클릭하세요');
+        return;
+      }
+      cmd.targetId = best;
+    }
+    this.runner.enqueue(cmd);
+  }
+
+  enterCastMode(spellId: string): void {
+    this.cancelMode();
+    this.mode = { cast: spellId };
+  }
+
   /** 건설 모드 진입 (HUD 버튼에서 호출) */
   enterBuildMode(kind: BuildingKind): void {
     if (this.ghost) this.ghost.destroy();
@@ -235,7 +277,7 @@ export class InputController {
   }
 
   private moveGhost(p: Phaser.Input.Pointer): void {
-    if (!this.ghost || typeof this.mode !== 'object') return;
+    if (!this.ghost || typeof this.mode !== 'object' || !('build' in this.mode)) return;
     const w = this.world(p);
     const tx = Math.floor(w.x);
     const ty = Math.floor(w.y);
@@ -245,7 +287,7 @@ export class InputController {
   }
 
   private tryPlaceBuilding(p: Phaser.Input.Pointer): void {
-    if (typeof this.mode !== 'object') return;
+    if (typeof this.mode !== 'object' || !('build' in this.mode)) return;
     const kind = this.mode.build;
     const w = this.world(p);
     const tx = Math.floor(w.x);

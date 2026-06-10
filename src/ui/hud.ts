@@ -5,6 +5,7 @@ import type { InputController } from '../render/input';
 import type { SimRunner } from '../render/SimRunner';
 import type { BuildingKind, UnitRole } from '../core/types';
 import { BUILDING_STATS, TIER_UP, UNIT_STATS, UPGRADES } from '../data/baseline';
+import { spellsOf } from '../data/spells';
 import { findBuilding } from '../core/state';
 import { SUPPLY_CAP } from '../core/const';
 
@@ -25,7 +26,7 @@ export class Hud {
   private toastTimer = 0;
   minimapCanvas: HTMLCanvasElement;
 
-  constructor(private runner: SimRunner, private input: InputController, private player: 0 | 1) {
+  constructor(private runner: SimRunner, private input: InputController, private player: 0 | 1, private spectate = false) {
     this.root = document.createElement('div');
     this.root.id = 'hud';
     this.root.innerHTML = HUD_CSS;
@@ -59,6 +60,23 @@ export class Hud {
   }
 
   update(deltaMs: number): void {
+    if (this.spectate) {
+      // 관전: 양측 자원/병력 비교 패널
+      const parts = this.state.players.map((p, i) => {
+        const army = this.state.units.filter((u) => u.player === i && u.role !== 'worker').length;
+        const workers = this.state.units.filter((u) => u.player === i && u.role === 'worker').length;
+        const color = i === 0 ? '#3aa0ff' : '#ff5a52';
+        return `<span style="color:${color};font-weight:800">[${i === 0 ? '청' : '적'}]</span> ⛏${p.gold} 🌲${p.wood} 👷${workers} ⚔${army}`;
+      });
+      const mins = Math.floor(this.state.tick / 20 / 60);
+      const secs = Math.floor((this.state.tick / 20) % 60);
+      this.resBar.innerHTML = `${parts.join('<span style="opacity:0.3"> | </span>')}<span style="margin-left:auto">⏱ ${mins}:${String(secs).padStart(2, '0')} · x${this.runner.speedMultiplier}</span>`;
+      if (this.toastTimer > 0) {
+        this.toastTimer -= deltaMs;
+        if (this.toastTimer <= 0) this.toastEl.style.opacity = '0';
+      }
+      return;
+    }
     const p = this.state.players[this.player];
     const cap = Math.min(p.supplyCap, SUPPLY_CAP);
     this.resBar.innerHTML =
@@ -107,6 +125,18 @@ export class Hud {
       for (const kind of ['farm', 'barracks', 'hall', 'magetower', 'forge', 'tower'] as BuildingKind[]) {
         const s = BUILDING_STATS[kind];
         this.button(`${KIND_KO[kind]}<small>${s.cost.gold}/${s.cost.wood}</small>`, () => this.input.enterBuildMode(kind));
+      }
+    }
+    // 캐스터 스펠 버튼
+    const caster = sel
+      .map((id) => this.state.units.find((u) => u.id === id && u.role === 'caster'))
+      .find((u) => u);
+    if (caster) {
+      for (const def of spellsOf(caster.faction)) {
+        const cd = caster.spellCooldowns[def.id] ?? 0;
+        this.button(`${def.ko}<small>${cd > 0 ? `재사용 ${Math.ceil(cd / 20)}초` : '준비됨'}</small>`, () => {
+          this.input.enterCastMode(def.id);
+        });
       }
     }
     this.button('정지 <small>S</small>', () => {

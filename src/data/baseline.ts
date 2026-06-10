@@ -50,7 +50,7 @@ export const UNIT_STATS: Record<UnitRole, UnitStats> = {
   caster: {
     cost: { gold: 120, wood: 60 }, hp: 50, damage: 5, armor: 0, range: 4.0,
     attackCooldown: 30, windup: 8, speed: 0.10, supply: 2, trainTicks: 280,
-    vision: 5, aggroRange: 4.0, splash: 0, bonusVsBuilding: 1, requiresTier: 3,
+    vision: 5, aggroRange: 4.0, splash: 0, bonusVsBuilding: 1, requiresTier: 2,
   },
   // elite = cavalry 전환형 (연구 후 cavalry 슬롯이 elite로 생산) — 수치는 cavalry 강화판
   elite: {
@@ -94,7 +94,7 @@ export const BUILDING_STATS: Record<BuildingKind, BuildingStats> = {
   },
   magetower: {
     cost: { gold: 180, wood: 150 }, hp: 600, w: 2, h: 2, buildTicks: 280,
-    vision: 5, supplyProvided: 0, requiresTier: 3, trains: ['caster'], isProduction: true,
+    vision: 5, supplyProvided: 0, requiresTier: 2, trains: ['caster'], isProduction: true,
   },
   forge: {
     cost: { gold: 140, wood: 100 }, hp: 650, w: 2, h: 2, buildTicks: 240,

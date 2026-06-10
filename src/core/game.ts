@@ -9,6 +9,8 @@ import { economyTick } from './economy';
 import { constructionTick } from './building';
 import { productionTick } from './production';
 import { combatTick, statusTick } from './combat';
+import { autoCastTick } from './autoCast';
+import { registerFactionSpells } from './factionSpells';
 import { moveUnits } from './movement';
 import { victoryTick } from './victory';
 import { BUILDING_STATS, ECON, UNIT_STATS } from '../data/baseline';
@@ -22,6 +24,7 @@ export interface GameConfig {
 }
 
 export function createGame(cfg: GameConfig): GameState {
+  registerFactionSpells(); // 멱등 — 레지스트리 갱신
   const map = parseMap(cfg.mapAscii);
   const state = createState(map, cfg.seed, cfg.factions);
   for (const player of [0, 1] as const) {
@@ -59,16 +62,17 @@ const FOG_INTERVAL = 4; // 플랜 M-6: 시야 갱신 4틱 주기
 
 export function step(state: GameState, commands: Command[]): void {
   if (state.winner !== -1) return;
+  state.grid.rebuild(state.units); // 명령(스펠 등)이 grid를 쓰므로 명령 적용 전에 재구축
   if (commands.length > 0) {
     state.commandLog.push({ tick: state.tick, cmds: commands });
     for (const cmd of commands) applyCommand(state, cmd);
   }
-  state.grid.rebuild(state.units);
   if (state.tick % FOG_INTERVAL === 0) updateFog(state);
   economyTick(state);
   constructionTick(state);
   productionTick(state);
   combatTick(state);
+  autoCastTick(state);
   statusTick(state);
   moveUnits(state);
   sweepDead(state);
@@ -77,6 +81,7 @@ export function step(state: GameState, commands: Command[]): void {
 }
 
 function updateFog(state: GameState): void {
+  state.revealers = state.revealers.filter((r) => r.untilTick > state.tick);
   for (const player of [0, 1] as const) {
     const fog = state.fog[player];
     fog.beginUpdate();
@@ -87,6 +92,9 @@ function updateFog(state: GameState): void {
     for (const b of state.buildings) {
       if (b.player !== player || b.hp <= 0) continue;
       fog.stampCircle(b.tileX + b.w / 2, b.tileY + b.h / 2, BUILDING_STATS[b.kind].vision);
+    }
+    for (const r of state.revealers) {
+      if (r.player === player) fog.stampCircle(r.x, r.y, r.radius);
     }
   }
 }

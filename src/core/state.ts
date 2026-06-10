@@ -28,6 +28,8 @@ export interface GameState {
   commandLog: { tick: number; cmds: Command[] }[];
   flowCache: FlowCache;
   grid: SpatialGrid;
+  /** 투시 등 임시 시야 (untilTick 지나면 제거) */
+  revealers: { player: PlayerId; x: number; y: number; radius: number; untilTick: number }[];
 }
 
 export function createPlayer(faction: FactionId): PlayerState {
@@ -60,6 +62,7 @@ export function createState(map: WorldMap, seed: number, factions: [FactionId, F
     commandLog: [],
     flowCache: new FlowCache(),
     grid: new SpatialGrid(map.width),
+    revealers: [],
   };
   for (const spot of map.mineSpots) {
     const mine: GoldMine = {

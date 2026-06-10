@@ -4,6 +4,7 @@ import type { Command } from '../core/types';
 import type { GameState } from '../core/state';
 import { step } from '../core/game';
 import { MAX_CATCHUP_TICKS, TICK_MS } from '../core/const';
+import type { AiController } from '../core/ai/controller';
 
 export class SimRunner {
   private acc = 0;
@@ -12,6 +13,8 @@ export class SimRunner {
   prevPos = new Map<number, { x: number; y: number }>();
   speedMultiplier = 1; // 관전 배속
   paused = false;
+  /** AI 플레이어 (대전 상대 / 관전 양측) */
+  ais: AiController[] = [];
 
   constructor(public state: GameState) {}
 
@@ -26,6 +29,7 @@ export class SimRunner {
     let steps = 0;
     while (this.acc >= TICK_MS && steps < MAX_CATCHUP_TICKS * this.speedMultiplier) {
       this.snapshotPositions();
+      for (const ai of this.ais) this.pending.push(...ai.tick(this.state));
       step(this.state, this.pending);
       this.pending = [];
       this.acc -= TICK_MS;
@@ -38,6 +42,7 @@ export class SimRunner {
   /** 디버그: 단일 틱 스텝 */
   stepOnce(): void {
     this.snapshotPositions();
+    for (const ai of this.ais) this.pending.push(...ai.tick(this.state));
     step(this.state, this.pending);
     this.pending = [];
   }

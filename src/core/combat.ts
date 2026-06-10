@@ -164,10 +164,10 @@ export function damageUnit(state: GameState, attacker: Unit | null, target: Unit
   if (attacker) {
     attacker.outOfCombatTicks = 0;
     state.counters.engagements++;
-    // 마계 정예 흡혈 (§2.2 — Phase 3에서 데이터화)
-    if (attacker.faction === 'demon' && attacker.role === 'elite') {
-      attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.floor(dmg * 0.3));
-    }
+    // 흡혈: 마계 정예 패시브 30% + 흡혈 오라 버프
+    let steal = attacker.faction === 'demon' && attacker.role === 'elite' ? 0.3 : 0;
+    for (const b of attacker.buffs) if (b.kind === 'lifesteal') steal = Math.max(steal, b.power);
+    if (steal > 0) attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.floor(dmg * steal));
   }
   if (target.hp <= 0) killUnit(state, target);
 }
@@ -239,6 +239,16 @@ export function statusTick(state: GameState): void {
     for (const key of Object.keys(u.spellCooldowns)) {
       if (u.spellCooldowns[key] > 0) u.spellCooldowns[key]--;
     }
+    // 수명 만료(소환수) → 사망
+    let expired = false;
+    for (const b of u.buffs) {
+      if (b.kind === 'expire' && b.ticks <= 1) {
+        killUnit(state, u);
+        expired = true;
+        break;
+      }
+    }
+    if (expired) continue;
     u.buffs = u.buffs.filter((b) => --b.ticks > 0);
     tickPassiveRegen(u);
     tickCharm(u);
