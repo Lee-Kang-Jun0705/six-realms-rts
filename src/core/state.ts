@@ -60,7 +60,7 @@ export function createState(map: WorldMap, seed: number, factions: [FactionId, F
     fog: [new Fog(map), new Fog(map)],
     nextId: 1,
     winner: -1,
-    counters: { unitsProduced: {}, spellsCast: {}, engagements: 0, buildingsBuilt: {} },
+    counters: { unitsProduced: {}, spellsCast: {}, engagements: 0, buildingsBuilt: {}, castersByFaction: {} },
     commandLog: [],
     flowCache: new FlowCache(),
     grid: new SpatialGrid(map.width),
@@ -96,6 +96,9 @@ export function spawnUnit(state: GameState, player: PlayerId, role: UnitRole, x:
   if (!isSummoned) state.players[player].supply += s.supply;
   else state.players[player].summonCount++;
   state.counters.unitsProduced[role] = (state.counters.unitsProduced[role] ?? 0) + 1;
+  if (role === 'caster') {
+    state.counters.castersByFaction[faction] = (state.counters.castersByFaction[faction] ?? 0) + 1;
+  }
   return unit;
 }
 

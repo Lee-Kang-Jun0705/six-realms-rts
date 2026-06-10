@@ -10,17 +10,37 @@ import { passable } from './map';
 
 const CHASE_GIVEUP = 9; // 추격 포기 거리 (타일)
 
+/** 같은 틱의 모든 공격을 수집 후 일괄 적용 — id 순서 선공 편향 제거 (동시 해소) */
+interface QueuedAttack {
+  attacker: Unit | null;
+  targetUnit?: Unit;
+  targetBuilding?: Building;
+  /** 타워 등 고정 데미지 (dealAttack 미경유) */
+  flatDamage?: number;
+}
+
+/** 틱 홀짝으로 순회 방향 교차 — id 오름차순 고정 처리의 P0(낮은 id) 선행 우위 상쇄 */
+export function fairOrder(state: GameState): Unit[] {
+  return state.tick % 2 === 0 ? state.units : [...state.units].reverse();
+}
+
 export function combatTick(state: GameState): void {
   const scratch: Unit[] = [];
-  for (const u of state.units) {
+  const attacks: QueuedAttack[] = [];
+  for (const u of fairOrder(state)) {
     if (u.state === 'dead' || u.role === 'worker') {
-      if (u.role === 'worker' && u.state === 'attacking') tickAttack(state, u); // 일꾼 강제 공격 명령 시
+      if (u.role === 'worker' && u.state === 'attacking') tickAttack(state, u, attacks); // 일꾼 강제 공격 명령 시
       continue;
     }
-    if (u.state === 'attacking') tickAttack(state, u);
+    if (u.state === 'attacking') tickAttack(state, u, attacks);
     else if (u.state === 'attackMove' || u.state === 'idle') tryAcquire(state, u, scratch);
   }
-  towerTick(state);
+  towerTick(state, attacks);
+  // 일괄 적용: 양측이 같은 틱에 서로를 죽일 수 있음 (상호 동시 처치 = 공정)
+  for (const a of attacks) {
+    if (a.flatDamage !== undefined && a.targetUnit) damageUnit(state, null, a.targetUnit, a.flatDamage);
+    else if (a.attacker) dealAttack(state, a.attacker, a.targetUnit, a.targetBuilding);
+  }
 }
 
 function tryAcquire(state: GameState, u: Unit, scratch: Unit[]): void {
@@ -99,6 +119,10 @@ export function isStunned(u: Unit): boolean {
   return hasBuff(u, 'stun');
 }
 
+function isDead(u: Unit): boolean {
+  return u.state === 'dead';
+}
+
 /** 은신/둔갑 유닛은 적 디텍터(완성된 방어탑 시야 내)가 없으면 타겟 불가 (§2.1 디텍터) */
 export function isTargetable(state: GameState, target: Unit, byPlayer: number): boolean {
   if (!hasBuff(target, 'stealth') && !hasBuff(target, 'disguise')) return true;
@@ -111,7 +135,7 @@ export function isTargetable(state: GameState, target: Unit, byPlayer: number): 
   return false;
 }
 
-function tickAttack(state: GameState, u: Unit): void {
+function tickAttack(state: GameState, u: Unit, attacks: QueuedAttack[]): void {
   if (isStunned(u)) {
     u.windup = 0;
     return;
@@ -170,7 +194,7 @@ function tickAttack(state: GameState, u: Unit): void {
   if (u.windup > 0) return;
   const frenzy = buffPower(u, 'frenzy');
   u.attackCooldown = Math.max(4, Math.floor(stats.attackCooldown / (1 + frenzy)));
-  dealAttack(state, u, targetUnit, targetBuilding);
+  attacks.push({ attacker: u, targetUnit, targetBuilding }); // 일괄 적용 큐 (동시 해소)
 }
 
 function dealAttack(state: GameState, u: Unit, targetUnit?: Unit, targetBuilding?: Building): void {
@@ -204,6 +228,7 @@ function splashAround(state: GameState, u: Unit, x: number, y: number, radius: n
 }
 
 export function damageUnit(state: GameState, attacker: Unit | null, target: Unit, raw: number): void {
+  if (target.state === 'dead') return; // 같은 틱 중복 처치 가드
   const tStats = UNIT_STATS[target.role];
   const tp = state.players[target.player];
   const armor = tStats.armor + (tp.upgrades['armor'] ?? 0) * ARMOR_PER_LV;
@@ -230,7 +255,7 @@ export function damageUnit(state: GameState, attacker: Unit | null, target: Unit
   if (target.hp <= 0) {
     killUnit(state, target);
     // 요괴 정예: 구미호 폭주 — 처치 시 이속/공속 버스트 (§2.2 정예 능력)
-    if (attacker && target.state === 'dead' && attacker.faction === 'yokai' && attacker.role === 'elite') {
+    if (attacker && isDead(target) && attacker.faction === 'yokai' && attacker.role === 'elite') {
       attacker.buffs.push({ kind: 'haste', ticks: 100, power: 0.4 });
       attacker.buffs.push({ kind: 'frenzy', ticks: 100, power: 0.5 });
       state.counters.spellsCast['fox-frenzy'] = (state.counters.spellsCast['fox-frenzy'] ?? 0) + 1;
@@ -274,7 +299,7 @@ export function killUnit(state: GameState, u: Unit): void {
   }
 }
 
-function towerTick(state: GameState): void {
+function towerTick(state: GameState, attacks: QueuedAttack[]): void {
   const scratch: Unit[] = [];
   for (const b of state.buildings) {
     if (b.kind !== 'tower' || b.hp <= 0 || b.buildProgress < 1) continue;
@@ -298,7 +323,7 @@ function towerTick(state: GameState): void {
     }
     if (best) {
       b.attackCooldown = atk.cooldown;
-      damageUnit(state, null, best, atk.damage);
+      attacks.push({ attacker: null, targetUnit: best, flatDamage: atk.damage });
     }
   }
 }
@@ -333,10 +358,10 @@ function tickPassiveRegen(u: Unit): void {
   if (u.faction === 'fantasy' && u.role === 'elite' && u.hp < u.maxHp * 0.5 && !hasBuff(u, 'protect')) {
     u.buffs.push({ kind: 'protect', ticks: 60, power: 0.5 });
   }
-  if (u.outOfCombatTicks < 60) return; // 3초 비전투
+  if (u.outOfCombatTicks < 80) return; // 4초 비전투
   if (u.faction === 'psion') {
-    const cap = Math.floor(u.maxHp * 0.15);
-    if (u.shield < cap && u.outOfCombatTicks % 10 === 0) u.shield++;
+    const cap = Math.floor(u.maxHp * 0.1); // 밸런스: 건틀릿 66.7% → 너프 (15%→10%)
+    if (u.shield < cap && u.outOfCombatTicks % 12 === 0) u.shield++;
   } else if (u.faction === 'celestial') {
     if (u.hp < u.maxHp && u.outOfCombatTicks % 20 === 0) u.hp++;
   }

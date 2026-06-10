@@ -150,4 +150,6 @@ export interface UsageCounters {
   spellsCast: Record<string, number>;
   engagements: number;
   buildingsBuilt: Record<string, number>;
+  /** 종족별 캐스터 생산 (스펠 dead 진단용) */
+  castersByFaction: Record<string, number>;
 }

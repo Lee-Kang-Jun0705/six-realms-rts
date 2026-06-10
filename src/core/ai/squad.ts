@@ -55,7 +55,9 @@ export function squadTickAi(
       break;
     }
     case 'gather': {
-      const threshold = attackThreshold * (1.2 - pers.aggression * 0.5);
+      // 교착 해소: 시간이 지날수록 공격 임계 하향 (양측 거북이 → 30분 무승부 방지)
+      const timeFactor = Math.max(0.35, 1 - state.tick / 28000);
+      const threshold = attackThreshold * (1.2 - pers.aggression * 0.5) * timeFactor;
       if (value >= threshold) {
         sq.state = 'attack';
         sq.attackStartValue = value;

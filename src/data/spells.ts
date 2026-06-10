@@ -17,12 +17,12 @@ export const SPELLS: Record<string, SpellDef> = {
   // 초능력자
   'psi-blast': {
     id: 'psi-blast', ko: '염동 충격파', faction: 'psion', cooldown: 160, range: 5,
-    autoCastEnemies: 2,
+    autoCastEnemies: 1,
     params: { radius: 1.6, damage: 18, knockback: 1.6 },
   },
   'psi-storm': {
     id: 'psi-storm', ko: '사이오닉 폭풍', faction: 'psion', cooldown: 420, range: 5.5,
-    autoCastEnemies: 4,
+    autoCastEnemies: 3,
     params: { radius: 2.5, damage: 34 },
   },
   clairvoyance: {
@@ -38,8 +38,8 @@ export const SPELLS: Record<string, SpellDef> = {
   },
   'blood-aura': {
     id: 'blood-aura', ko: '흡혈 오라', faction: 'demon', cooldown: 480, range: 0,
-    autoCastEnemies: 3,
-    params: { radius: 3.2, lifesteal: 0.25, duration: 320 },
+    autoCastEnemies: 2,
+    params: { radius: 3.2, lifesteal: 0.25, duration: 320, autoRadius: 6 },
   },
   sacrifice: {
     id: 'sacrifice', ko: '제물', faction: 'demon', cooldown: 240, range: 4,
@@ -50,7 +50,7 @@ export const SPELLS: Record<string, SpellDef> = {
   'light-step': {
     id: 'light-step', ko: '경공', faction: 'murim', cooldown: 360, range: 0,
     autoCastEnemies: 2,
-    params: { radius: 3.5, haste: 0.45, duration: 200 },
+    params: { radius: 3.5, haste: 0.45, duration: 200, autoRadius: 6 },
   },
   'pressure-point': {
     id: 'pressure-point', ko: '점혈', faction: 'murim', cooldown: 200, range: 4.5,
@@ -70,8 +70,8 @@ export const SPELLS: Record<string, SpellDef> = {
   },
   blessing: {
     id: 'blessing', ko: '축복', faction: 'fantasy', cooldown: 420, range: 0,
-    autoCastEnemies: 2,
-    params: { radius: 3.5, power: 0.3, duration: 240 },
+    autoCastEnemies: 1,
+    params: { radius: 3.5, power: 0.3, duration: 240, autoRadius: 6 },
   },
   fireball: {
     id: 'fireball', ko: '화염구', faction: 'fantasy', cooldown: 220, range: 5.5,
@@ -107,8 +107,8 @@ export const SPELLS: Record<string, SpellDef> = {
   },
   aegis: {
     id: 'aegis', ko: '가호', faction: 'celestial', cooldown: 440, range: 0,
-    autoCastEnemies: 2,
-    params: { radius: 3.5, reduce: 0.3, duration: 240 },
+    autoCastEnemies: 1,
+    params: { radius: 3.5, reduce: 0.3, duration: 240, autoRadius: 6 },
   },
 };
 

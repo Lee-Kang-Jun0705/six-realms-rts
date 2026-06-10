@@ -11,7 +11,9 @@ test.describe('부팅/메뉴', () => {
     await page.goto('/');
     // 첫 로드는 vite 콜드스타트 + Phaser 번들 변환으로 오래 걸릴 수 있음
     await expect(page.locator('.menu-start').first()).toBeVisible({ timeout: 40000 });
-    await expect(page.locator('.menu-f')).toHaveCount(2);
+    // 종족 6개 + 맵 버튼 6개(5종+랜덤)
+    await expect(page.locator('.menu-factions:not(.menu-maps) .menu-f')).toHaveCount(6);
+    await expect(page.locator('.menu-maps .menu-f')).toHaveCount(6);
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
 });

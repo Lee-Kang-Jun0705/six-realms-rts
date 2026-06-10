@@ -36,7 +36,9 @@ export function unitSpeed(u: Unit): number {
 
 export function moveUnits(state: GameState): void {
   const neighbors: Unit[] = [];
-  for (const u of state.units) {
+  // 틱 홀짝 교차 순회 — 이동 우선권의 진영 편향 상쇄 (combat.fairOrder와 동일 원리)
+  const order = state.tick % 2 === 0 ? state.units : [...state.units].reverse();
+  for (const u of order) {
     if (u.state === 'dead' || !LOCOMOTING.has(u.state)) continue;
     if (u.buffs.some((b) => b.kind === 'stun')) continue; // 점혈 — 행동 불가
     const dx = u.destX - u.x;

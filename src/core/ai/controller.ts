@@ -50,8 +50,8 @@ export class AiController {
     if (state.winner !== -1) return [];
     if (!this.bo) this.pickBuildOrder(state);
     if (!this.intel) this.intel = createIntel(state, this.player);
-    // 플레이어별 오프셋으로 부하 분산 + 결정성 유지
-    if ((state.tick + this.player * 2) % this.diff.decisionInterval !== 0) return [];
+    // 양측 동일 틱 결정 — 오프셋은 P0에 일관된 선행(300ms) 우위를 줘 포지션 편향 유발
+    if (state.tick % this.diff.decisionInterval !== 0) return [];
 
     updateIntel(state, this.player, this.intel);
     this.reactionPresets(state);

@@ -18,6 +18,8 @@ const ECO_STEPS: BuildStep[] = [
   { atSupply: 15, action: { kind: 'build', building: 'farm' } },
   { atSupply: 16, action: { kind: 'upgrade', id: 'weapon' } },
   { atSupply: 18, action: { kind: 'build', building: 'barracks' } },
+  { atSupply: 20, action: { kind: 'tierUp' } },
+  { atSupply: 22, action: { kind: 'build', building: 'magetower' } },
 ];
 const TECH_STEPS: BuildStep[] = [
   { atSupply: 5, action: { kind: 'workersTarget', n: 12 } },
@@ -44,32 +46,32 @@ interface FactionFlavor {
 const FLAVORS: Record<Exclude<FactionId, 'dummy'>, FactionFlavor> = {
   psion: {
     ko: '초능력자', rushKo: '사이킥 러시', ecoKo: '확장 운영', techKo: '폭풍 테크',
-    rush: { melee: 3, ranged: 4 }, eco: { melee: 2, ranged: 5 },
+    rush: { melee: 3, ranged: 4 }, eco: { melee: 2, ranged: 5, caster: 1 },
     tech: { melee: 2, ranged: 3, cavalry: 2, caster: 1 }, tempo: 1.0,
   },
   murim: {
     ko: '무림', rushKo: '쾌검 러시', ecoKo: '문파 운영', techKo: '기공 테크',
-    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3 },
+    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3, caster: 1 },
     tech: { melee: 3, cavalry: 2, caster: 1 }, tempo: 0.92, // 이속 패시브 = 빠른 템포
   },
   fantasy: {
     ko: '판타지', rushKo: '검방 러시', ecoKo: '왕국 운영', techKo: '마법 테크',
-    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4 },
+    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
     tech: { melee: 2, ranged: 2, cavalry: 2, siege: 1, caster: 1 }, tempo: 1.05, // 방어 패시브 = 수비적
   },
   yokai: {
     ko: '요괴', rushKo: '백귀 러시', ecoKo: '둔갑 운영', techKo: '매혹 테크',
-    rush: { melee: 4, ranged: 3 }, eco: { melee: 3, ranged: 4 },
+    rush: { melee: 4, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
     tech: { melee: 2, ranged: 2, cavalry: 3, caster: 1 }, tempo: 0.95, // 숲 통과 기습
   },
   demon: {
     ko: '마계', rushKo: '군단 러시', ecoKo: '마기 회수 운영', techKo: '소환 테크',
-    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3 },
+    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3, caster: 1 },
     tech: { melee: 3, cavalry: 2, siege: 1, caster: 1 }, tempo: 0.93, // 환급 = 물량전
   },
   celestial: {
     ko: '천계', rushKo: '심판 러시', ecoKo: '성역 운영', techKo: '부활 테크',
-    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4 },
+    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
     tech: { melee: 2, ranged: 2, cavalry: 2, caster: 1 }, tempo: 1.1, // 고코스트 후반 지향
   },
 };

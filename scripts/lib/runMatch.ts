@@ -27,6 +27,7 @@ export interface MatchResult {
   unitsProduced: Record<string, number>;
   spellsCast: Record<string, number>;
   buildingsBuilt: Record<string, number>;
+  castersByFaction: Record<string, number>;
   finalHash: number;
   buildOrderNames: [string, string];
   crashed: string | null;
@@ -72,6 +73,7 @@ export function runMatch(cfg: MatchConfig): MatchResult {
     unitsProduced: state.counters.unitsProduced,
     spellsCast: state.counters.spellsCast,
     buildingsBuilt: state.counters.buildingsBuilt,
+    castersByFaction: state.counters.castersByFaction,
     finalHash: hashState(state),
     buildOrderNames: [ais[0].buildOrderName, ais[1].buildOrderName],
     crashed,

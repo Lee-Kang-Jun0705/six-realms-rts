@@ -47,7 +47,17 @@ export function economyTickAi(state: GameState, me: PlayerId, mem: AiMemory, cmd
         continue;
       }
     }
-    const mine = state.mines.find((m) => !m.collapsed);
+    // 최근접 금광 (배열 첫 금광 = 맵 좌상단 = P0측 → 심각한 포지션 편향이었음)
+    let mine = null;
+    let bestD = Infinity;
+    for (const m of state.mines) {
+      if (m.collapsed) continue;
+      const d = (m.tileX + 1 - hqC.x) ** 2 + (m.tileY + 1 - hqC.y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        mine = m;
+      }
+    }
     if (mine) cmds.push({ type: 'harvest', player: me, unitIds: [u.id], targetId: mine.id });
   }
   // 일꾼 훈련

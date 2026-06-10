@@ -16,7 +16,9 @@ function unitValue(role: Unit['role']): number {
 
 export function autoCastTick(state: GameState): void {
   if (state.tick % 8 !== 0) return;
-  for (const u of state.units) {
+  // 8틱 주기라 16틱 단위로 방향 교차 — 스펠 선공 편향 상쇄
+  const order = state.tick % 16 === 0 ? state.units : [...state.units].reverse();
+  for (const u of order) {
     if (u.state === 'dead' || u.role !== 'caster') continue;
     if (u.state !== 'attacking' && u.state !== 'attackMove' && u.state !== 'idle') continue;
     tryAutoCast(state, u);
@@ -31,7 +33,7 @@ function tryAutoCast(state: GameState, caster: Unit): void {
     if (def.autoCastEnemies <= 0) continue;
     if (def.range === 0) {
       // 자기 중심 오라류
-      if (countEnemies(state, player, caster.x, caster.y, def.params.radius ?? 3) >= def.autoCastEnemies) {
+      if (countEnemies(state, player, caster.x, caster.y, def.params.autoRadius ?? def.params.radius ?? 3) >= def.autoCastEnemies) {
         castSpell(state, { type: 'cast', player, unitIds: [caster.id], spellId: def.id, x: caster.x, y: caster.y });
         return;
       }
@@ -77,7 +79,7 @@ function trySpecial(state: GameState, caster: Unit, player: 0 | 1, spellId: stri
           best = e;
         }
       }
-      if (!best || bestV < 100) return false; // 싸구려에 낭비 금지
+      if (!best || bestV < 90) return false; // 싸구려에 낭비 금지 (사수급부터)
       castSpell(state, { type: 'cast', player, unitIds: [caster.id], spellId, targetId: best.id });
       return true;
     }
