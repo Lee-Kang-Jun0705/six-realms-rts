@@ -81,10 +81,11 @@ export class UnitsLayer {
       v.sprite.setVisible(!hidden);
       v.sprite.setAlpha(veiled && !hidden ? 0.45 : 1);
     }
-    // 사라진 유닛 → 사망 연출
+    // 사라진 유닛 → 사망 연출 + 선택 목록에서 제거 (죽은 유닛 카운트 잔존 버그)
     for (const [id, v] of this.views) {
       if (seen.has(id)) continue;
       this.views.delete(id);
+      this.selection.delete(id);
       this.playDeath(v);
     }
   }
