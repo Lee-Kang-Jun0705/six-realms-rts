@@ -1,6 +1,7 @@
-// 진입점 — Phaser 부트 (씬은 Phase 2에서 본격 구현)
+// 진입점 — Phaser 부트
 import Phaser from 'phaser';
-import { BootScene } from './render/BootScene';
+import { MenuScene } from './render/MenuScene';
+import { GameScene } from './render/GameScene';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -10,5 +11,5 @@ new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene],
+  scene: [MenuScene, GameScene],
 });
