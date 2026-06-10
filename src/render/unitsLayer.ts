@@ -73,8 +73,13 @@ export class UnitsLayer {
       v.sprite.setTexture(unitKey(u.faction, u.role, motion, frame));
       v.sprite.setFlipX(v.facing < 0);
       v.sprite.setPosition(x, y).setDepth(y);
-      const hidden = u.player !== this.viewPlayer && !this.isTileVisible(Math.floor(u.x), Math.floor(u.y));
+      const veiled = u.buffs.some((b) => b.kind === 'stealth' || b.kind === 'disguise');
+      const isEnemy = u.player !== this.viewPlayer && this.viewPlayer >= 0;
+      const hidden =
+        (u.player !== this.viewPlayer && this.viewPlayer >= 0 && !this.isTileVisible(Math.floor(u.x), Math.floor(u.y))) ||
+        (veiled && isEnemy); // 은신/둔갑 적 유닛은 미표시 (디텍터 판정은 시뮬에서)
       v.sprite.setVisible(!hidden);
+      v.sprite.setAlpha(veiled && !hidden ? 0.45 : 1);
     }
     // 사라진 유닛 → 사망 연출
     for (const [id, v] of this.views) {

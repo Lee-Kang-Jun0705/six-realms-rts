@@ -30,6 +30,8 @@ export interface GameState {
   grid: SpatialGrid;
   /** 투시 등 임시 시야 (untilTick 지나면 제거) */
   revealers: { player: PlayerId; x: number; y: number; radius: number; untilTick: number }[];
+  /** 부활 스펠용 사망 기록 (비정예/비소환만, 최대 12) */
+  recentDeaths: { player: PlayerId; role: UnitRole; tick: number }[];
 }
 
 export function createPlayer(faction: FactionId): PlayerState {
@@ -63,6 +65,7 @@ export function createState(map: WorldMap, seed: number, factions: [FactionId, F
     flowCache: new FlowCache(),
     grid: new SpatialGrid(map.width),
     revealers: [],
+    recentDeaths: [],
   };
   for (const spot of map.mineSpots) {
     const mine: GoldMine = {
@@ -100,11 +103,13 @@ export function addBuilding(
   state: GameState, player: PlayerId, kind: BuildingKind, tileX: number, tileY: number, complete: boolean,
 ): Building {
   const s = BUILDING_STATS[kind];
+  const faction = state.players[player].faction;
+  const maxHp = faction === 'fantasy' ? Math.floor(s.hp * 1.2) : s.hp; // 판타지 패시브 (§2.2)
   const b: Building = {
-    id: state.nextId++, player, faction: state.players[player].faction, kind, tier: 1,
+    id: state.nextId++, player, faction, kind, tier: 1,
     tileX, tileY, w: s.w, h: s.h,
-    hp: complete ? s.hp : Math.max(1, Math.floor(s.hp * 0.1)),
-    maxHp: s.hp,
+    hp: complete ? maxHp : Math.max(1, Math.floor(maxHp * 0.1)),
+    maxHp,
     buildProgress: complete ? 1 : 0,
     queue: [], rallyX: tileX + s.w / 2, rallyY: tileY + s.h + 0.5, attackCooldown: 0,
   };

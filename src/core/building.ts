@@ -91,8 +91,9 @@ export function constructionTick(state: GameState): void {
     const reach = Math.max(b.w, b.h) / 2 + BUILD_REACH;
     if (distSq(u.x, u.y, c.x, c.y) > reach * reach) continue; // 이동 중
     const s = BUILDING_STATS[b.kind];
-    b.buildProgress = Math.min(1, b.buildProgress + 1 / s.buildTicks);
-    b.hp = Math.min(b.maxHp, b.hp + s.hp / s.buildTicks);
+    const rate = u.faction === 'fantasy' ? 1.25 : 1; // 판타지 패시브: 건설/수리 +25% (§2.2)
+    b.buildProgress = Math.min(1, b.buildProgress + rate / s.buildTicks);
+    b.hp = Math.min(b.maxHp, b.hp + (rate * b.maxHp) / s.buildTicks);
     if (b.buildProgress >= 1) {
       b.hp = b.maxHp;
       state.players[b.player].supplyCap += s.supplyProvided;

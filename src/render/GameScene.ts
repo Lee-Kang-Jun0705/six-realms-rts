@@ -168,9 +168,9 @@ export class GameScene extends Phaser.Scene {
       // 연속 관전 루프: 랜덤 종족/시드 로테이션 (플랜 §2.5 "멍때리고 구경")
       const timer = this.time.delayedCall(5000, () => {
         this.hud.destroy();
-        const pool: FactionId[] = ['psion', 'demon'];
+        const pool: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'celestial'];
         const f0 = pool[(this.cfg.seed + 1) % pool.length];
-        const f1 = pool[(this.cfg.seed + 7) % pool.length];
+        const f1 = pool[(this.cfg.seed + 4) % pool.length];
         this.scene.restart({ factions: [f0, f1], seed: this.cfg.seed + 1, mode: 'spectate' } satisfies GameSceneConfig);
       });
       this.input.keyboard!.once('keydown-ESC', () => {

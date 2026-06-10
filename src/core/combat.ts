@@ -5,7 +5,8 @@ import { buildingCenter, findBuilding, findUnit } from './state';
 import type { Building, Unit } from './types';
 import { ARMOR_PER_LV, BUILDING_STATS, UNIT_STATS, WEAPON_DMG_PER_LV } from '../data/baseline';
 import { destroyBuilding } from './building';
-import { distSq } from './vec';
+import { dirTo, distSq } from './vec';
+import { passable } from './map';
 
 const CHASE_GIVEUP = 9; // 추격 포기 거리 (타일)
 
@@ -49,8 +50,10 @@ function nearestEnemyUnit(state: GameState, u: Unit, range: number, scratch: Uni
   state.grid.query(u.x, u.y, range, scratch);
   let best: Unit | null = null;
   let bestD = Infinity;
+  const me = effectivePlayer(u);
   for (const n of scratch) {
-    if (n.state === 'dead' || effectivePlayer(n) === effectivePlayer(u)) continue;
+    if (n.state === 'dead' || effectivePlayer(n) === me) continue;
+    if (!isTargetable(state, n, me)) continue;
     const d = distSq(u.x, u.y, n.x, n.y);
     if (d < bestD) {
       bestD = d;
@@ -81,7 +84,38 @@ export function effectivePlayer(u: Unit): number {
   return u.charmOwner >= 0 ? u.charmOwner : u.player;
 }
 
+export function hasBuff(u: Unit, kind: string): boolean {
+  for (const b of u.buffs) if (b.kind === kind) return true;
+  return false;
+}
+
+export function buffPower(u: Unit, kind: string): number {
+  let p = 0;
+  for (const b of u.buffs) if (b.kind === kind) p = Math.max(p, b.power);
+  return p;
+}
+
+export function isStunned(u: Unit): boolean {
+  return hasBuff(u, 'stun');
+}
+
+/** 은신/둔갑 유닛은 적 디텍터(완성된 방어탑 시야 내)가 없으면 타겟 불가 (§2.1 디텍터) */
+export function isTargetable(state: GameState, target: Unit, byPlayer: number): boolean {
+  if (!hasBuff(target, 'stealth') && !hasBuff(target, 'disguise')) return true;
+  const detectRange = BUILDING_STATS.tower.vision;
+  for (const b of state.buildings) {
+    if (b.player !== byPlayer || b.kind !== 'tower' || b.hp <= 0 || b.buildProgress < 1) continue;
+    const c = buildingCenter(b);
+    if (distSq(target.x, target.y, c.x, c.y) <= detectRange * detectRange) return true;
+  }
+  return false;
+}
+
 function tickAttack(state: GameState, u: Unit): void {
+  if (isStunned(u)) {
+    u.windup = 0;
+    return;
+  }
   const stats = UNIT_STATS[u.role];
   const targetUnit = findUnit(state, u.targetId);
   const targetBuilding = targetUnit ? undefined : findBuilding(state, u.targetId);
@@ -107,6 +141,18 @@ function tickAttack(state: GameState, u: Unit): void {
       u.state = 'attackMove';
       return;
     }
+    // 초능력자 정예: 점멸 추격 (§2.2 정예 능력)
+    if (u.faction === 'psion' && u.role === 'elite' && (u.spellCooldowns['blink'] ?? 0) === 0 && d2 > 6) {
+      const d = dirTo(tx, ty, u.x, u.y);
+      const bx = tx + d.x * 1.0;
+      const by = ty + d.y * 1.0;
+      if (passable(state.map, Math.floor(bx), Math.floor(by), 'ground')) {
+        u.x = bx;
+        u.y = by;
+        u.spellCooldowns['blink'] = 240;
+        state.counters.spellsCast['blink'] = (state.counters.spellsCast['blink'] ?? 0) + 1;
+      }
+    }
     u.destX = tx;
     u.destY = ty;
     u.windup = 0;
@@ -122,17 +168,27 @@ function tickAttack(state: GameState, u: Unit): void {
   }
   u.windup--;
   if (u.windup > 0) return;
-  u.attackCooldown = stats.attackCooldown;
+  const frenzy = buffPower(u, 'frenzy');
+  u.attackCooldown = Math.max(4, Math.floor(stats.attackCooldown / (1 + frenzy)));
   dealAttack(state, u, targetUnit, targetBuilding);
 }
 
 function dealAttack(state: GameState, u: Unit, targetUnit?: Unit, targetBuilding?: Building): void {
   const stats = UNIT_STATS[u.role];
   const p = state.players[u.player];
-  const dmg = stats.damage + (p.upgrades['weapon'] ?? 0) * WEAPON_DMG_PER_LV;
+  // 공격 시 은신/둔갑 해제
+  u.buffs = u.buffs.filter((b) => b.kind !== 'stealth' && b.kind !== 'disguise');
+  let dmg = stats.damage + (p.upgrades['weapon'] ?? 0) * WEAPON_DMG_PER_LV;
+  const bless = buffPower(u, 'blessing');
+  if (bless > 0) dmg = Math.floor(dmg * (1 + bless));
   if (targetUnit) {
     damageUnit(state, u, targetUnit, dmg);
     if (stats.splash > 0) splashAround(state, u, targetUnit.x, targetUnit.y, stats.splash, dmg, targetUnit.id);
+    // 무림 정예: 검기 스플래시 (§2.2 정예 능력)
+    if (u.faction === 'murim' && u.role === 'elite') {
+      splashAround(state, u, targetUnit.x, targetUnit.y, 1.1, Math.floor(dmg * 0.5), targetUnit.id);
+      state.counters.spellsCast['sword-wave'] = (state.counters.spellsCast['sword-wave'] ?? 0) + 1;
+    }
   } else if (targetBuilding) {
     damageBuilding(state, targetBuilding, dmg * stats.bonusVsBuilding);
   }
@@ -152,7 +208,9 @@ export function damageUnit(state: GameState, attacker: Unit | null, target: Unit
   const tp = state.players[target.player];
   const armor = tStats.armor + (tp.upgrades['armor'] ?? 0) * ARMOR_PER_LV;
   let dmg = Math.max(1, raw - armor);
-  for (const b of target.buffs) if (b.kind === 'protect') dmg = Math.max(1, Math.floor(dmg * (1 - b.power)));
+  // 피해감소는 최대 1개만 적용 (악용 차단 규칙 ② — 가호+보호막 비중첩)
+  const protect = buffPower(target, 'protect');
+  if (protect > 0) dmg = Math.max(1, Math.floor(dmg * (1 - protect)));
   // 실드 우선 흡수 (초능력자 패시브)
   if (target.shield > 0) {
     const absorbed = Math.min(target.shield, dmg);
@@ -169,7 +227,15 @@ export function damageUnit(state: GameState, attacker: Unit | null, target: Unit
     for (const b of attacker.buffs) if (b.kind === 'lifesteal') steal = Math.max(steal, b.power);
     if (steal > 0) attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.floor(dmg * steal));
   }
-  if (target.hp <= 0) killUnit(state, target);
+  if (target.hp <= 0) {
+    killUnit(state, target);
+    // 요괴 정예: 구미호 폭주 — 처치 시 이속/공속 버스트 (§2.2 정예 능력)
+    if (attacker && target.state === 'dead' && attacker.faction === 'yokai' && attacker.role === 'elite') {
+      attacker.buffs.push({ kind: 'haste', ticks: 100, power: 0.4 });
+      attacker.buffs.push({ kind: 'frenzy', ticks: 100, power: 0.5 });
+      state.counters.spellsCast['fox-frenzy'] = (state.counters.spellsCast['fox-frenzy'] ?? 0) + 1;
+    }
+  }
 }
 
 export function damageBuilding(state: GameState, b: Building, dmg: number): void {
@@ -186,6 +252,7 @@ export function killUnit(state: GameState, u: Unit): void {
   if (u.faction === 'celestial' && u.role === 'elite' && !u.usedRevive) {
     u.usedRevive = true;
     u.hp = Math.floor(u.maxHp * 0.5);
+    state.counters.spellsCast['undying'] = (state.counters.spellsCast['undying'] ?? 0) + 1;
     return;
   }
   u.state = 'dead';
@@ -198,6 +265,11 @@ export function killUnit(state: GameState, u: Unit): void {
     // 마계 패시브: 골드 생산 유닛만 30% 환급 (소환수·매혹 제외, §2.2 규칙 ⑤)
     if (u.faction === 'demon' && u.charmOwner < 0) {
       p.gold += Math.floor(UNIT_STATS[u.role].cost.gold * 0.3);
+    }
+    // 부활 스펠 기록 (비정예만 — 규칙 ⑥)
+    if (u.role !== 'elite') {
+      state.recentDeaths.push({ player: u.player, role: u.role, tick: state.tick });
+      if (state.recentDeaths.length > 12) state.recentDeaths.shift();
     }
   }
 }
@@ -217,6 +289,7 @@ function towerTick(state: GameState): void {
     let bestD = Infinity;
     for (const n of scratch) {
       if (n.state === 'dead' || effectivePlayer(n) === b.player) continue;
+      // 타워 = 디텍터: 은신도 직접 공격 가능 (§2.1)
       const d = distSq(c.x, c.y, n.x, n.y);
       if (d < bestD) {
         bestD = d;
@@ -256,6 +329,10 @@ export function statusTick(state: GameState): void {
 }
 
 function tickPassiveRegen(u: Unit): void {
+  // 판타지 정예: HP 50% 이하 자동 신성 보호막 (§2.2 정예 능력, 규칙 ② 비중첩 적용됨)
+  if (u.faction === 'fantasy' && u.role === 'elite' && u.hp < u.maxHp * 0.5 && !hasBuff(u, 'protect')) {
+    u.buffs.push({ kind: 'protect', ticks: 60, power: 0.5 });
+  }
   if (u.outOfCombatTicks < 60) return; // 3초 비전투
   if (u.faction === 'psion') {
     const cap = Math.floor(u.maxHp * 0.15);

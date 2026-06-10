@@ -136,6 +136,17 @@ export function scoutTickAi(
     });
     return;
   }
+  // 요괴: 둔갑 정찰 (타겟팅 면제 상태로 적진 잠입)
+  const fox = myUnits(state, me).find(
+    (u) => u.role === 'caster' && u.faction === 'yokai' && (u.spellCooldowns['disguise'] ?? 0) === 0,
+  );
+  if (fox) {
+    sq.lastScoutTick = state.tick;
+    sq.scoutId = fox.id;
+    cmds.push({ type: 'cast', player: me, unitIds: [fox.id], spellId: 'disguise' });
+    cmds.push({ type: 'move', player: me, unitIds: [fox.id], x: intel.enemyBasePos.x + 2, y: intel.enemyBasePos.y + 2 });
+    return;
+  }
   const alive = state.units.find((u) => u.id === sq.scoutId && u.state !== 'dead');
   if (alive) return; // 정찰 진행 중
   const worker = myUnits(state, me).find((u) => u.role === 'worker' && u.state !== 'building');

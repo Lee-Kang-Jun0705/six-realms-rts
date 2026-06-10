@@ -38,6 +38,7 @@ export function moveUnits(state: GameState): void {
   const neighbors: Unit[] = [];
   for (const u of state.units) {
     if (u.state === 'dead' || !LOCOMOTING.has(u.state)) continue;
+    if (u.buffs.some((b) => b.kind === 'stun')) continue; // 점혈 — 행동 불가
     const dx = u.destX - u.x;
     const dy = u.destY - u.y;
     const distSq = dx * dx + dy * dy;

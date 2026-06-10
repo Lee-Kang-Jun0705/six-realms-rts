@@ -4,11 +4,16 @@
 import { runMatch, behaviorIssues, type MatchResult } from './lib/runMatch';
 import type { FactionId } from '../src/core/types';
 
-const SEEDS = [11, 22, 33];
+const SEEDS = [11, 22];
 const MATCHUPS: [FactionId, FactionId][] = [
+  // 미러 2종 + 6종족 전부가 최소 1회 등장하는 비미러 로테이션
   ['psion', 'psion'],
   ['demon', 'demon'],
   ['psion', 'demon'],
+  ['murim', 'fantasy'],
+  ['yokai', 'celestial'],
+  ['murim', 'yokai'],
+  ['fantasy', 'celestial'],
 ];
 
 const results: MatchResult[] = [];

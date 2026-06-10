@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import type { FactionId } from '../core/types';
 import { FACTION_PALETTES } from './palette';
 
-const PLAYABLE: FactionId[] = ['psion', 'demon']; // Phase 4에서 6종족 전부 해금
+const PLAYABLE: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'celestial'];
 
 export class MenuScene extends Phaser.Scene {
   private picked: FactionId = 'psion';
@@ -61,20 +61,25 @@ export class MenuScene extends Phaser.Scene {
       };
       fwrap.appendChild(btn);
     }
-    const enemyOf = (f: FactionId): FactionId => (f === 'psion' ? 'demon' : 'psion');
+    const enemyOf = (f: FactionId, seed: number): FactionId => {
+      const others = PLAYABLE.filter((x) => x !== f);
+      return others[seed % others.length];
+    };
     (el.querySelector('.menu-start:not(.spec)') as HTMLButtonElement).onclick = () => {
       el.remove();
+      const seed = (Date.now() % 100000) | 0;
       this.scene.start('game', {
-        factions: [this.picked, enemyOf(this.picked)],
-        seed: (Date.now() % 100000) | 0,
+        factions: [this.picked, enemyOf(this.picked, seed)],
+        seed,
         mode: 'play',
       });
     };
     (el.querySelector('.menu-start.spec') as HTMLButtonElement).onclick = () => {
       el.remove();
+      const seed = (Date.now() % 100000) | 0;
       this.scene.start('game', {
-        factions: [this.picked, enemyOf(this.picked)],
-        seed: (Date.now() % 100000) | 0,
+        factions: [this.picked, enemyOf(this.picked, seed)],
+        seed,
         mode: 'spectate',
       });
     };

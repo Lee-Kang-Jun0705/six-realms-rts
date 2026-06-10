@@ -115,6 +115,180 @@ export function registerFactionSpells(): void {
     return true;
   });
 
+  // ── 무림 ──────────────────────────────
+  registerSpell('light-step', (state, cmd) => {
+    const def = SPELLS['light-step'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    const allies: Unit[] = [];
+    state.grid.query(caster.x, caster.y, def.params.radius, allies);
+    for (const n of allies) {
+      if (n.state === 'dead' || effectivePlayer(n) !== cmd.player) continue;
+      n.buffs.push({ kind: 'haste', ticks: def.params.duration, power: def.params.haste });
+    }
+    return true;
+  });
+
+  registerSpell('pressure-point', (state, cmd) => {
+    const def = SPELLS['pressure-point'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster || !cmd.targetId) return false;
+    const target = findUnit(state, cmd.targetId);
+    if (!target || effectivePlayer(target) === cmd.player) return false;
+    if (distSq(caster.x, caster.y, target.x, target.y) > def.range * def.range) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    target.buffs.push({ kind: 'stun', ticks: def.params.stun, power: 0 });
+    target.windup = 0;
+    return true;
+  });
+
+  registerSpell('ki-wave', (state, cmd) => {
+    const def = SPELLS['ki-wave'];
+    if (cmd.x === undefined || cmd.y === undefined) return false;
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    // 직선 관통: 시전자→지점 방향 선분 주변 적 전체
+    const d = dirTo(caster.x, caster.y, cmd.x, cmd.y);
+    const hits = enemiesAround(state, cmd.player, caster.x + d.x * def.params.length / 2, caster.y + d.y * def.params.length / 2, def.params.length / 2 + 1);
+    for (const n of hits) {
+      // 선분 거리 계산 (투영)
+      const t = Math.max(0, Math.min(def.params.length, (n.x - caster.x) * d.x + (n.y - caster.y) * d.y));
+      const px = caster.x + d.x * t;
+      const py = caster.y + d.y * t;
+      if (distSq(n.x, n.y, px, py) <= def.params.width * def.params.width) {
+        damageUnit(state, caster, n, def.params.damage);
+      }
+    }
+    return true;
+  });
+
+  // ── 판타지 ──────────────────────────────
+  registerSpell('heal', (state, cmd) => {
+    const def = SPELLS['heal'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster || !cmd.targetId) return false;
+    const target = findUnit(state, cmd.targetId);
+    if (!target || effectivePlayer(target) !== cmd.player || target.hp >= target.maxHp) return false;
+    if (distSq(caster.x, caster.y, target.x, target.y) > def.range * def.range) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    target.hp = Math.min(target.maxHp, target.hp + def.params.amount);
+    return true;
+  });
+
+  registerSpell('blessing', (state, cmd) => {
+    const def = SPELLS['blessing'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    const allies: Unit[] = [];
+    state.grid.query(caster.x, caster.y, def.params.radius, allies);
+    for (const n of allies) {
+      if (n.state === 'dead' || effectivePlayer(n) !== cmd.player) continue;
+      n.buffs.push({ kind: 'blessing', ticks: def.params.duration, power: def.params.power });
+    }
+    return true;
+  });
+
+  registerSpell('fireball', (state, cmd) => {
+    const def = SPELLS['fireball'];
+    if (cmd.x === undefined || cmd.y === undefined) return false;
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    for (const n of enemiesAround(state, cmd.player, cmd.x, cmd.y, def.params.radius)) {
+      damageUnit(state, caster, n, def.params.damage);
+    }
+    return true;
+  });
+
+  // ── 요괴 ──────────────────────────────
+  registerSpell('disguise', (state, cmd) => {
+    const def = SPELLS['disguise'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    caster.buffs.push({ kind: 'disguise', ticks: def.params.duration, power: 0 });
+    return true;
+  });
+
+  registerSpell('charm', (state, cmd) => {
+    const def = SPELLS['charm'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster || !cmd.targetId) return false;
+    const target = findUnit(state, cmd.targetId);
+    // 이미 매혹 중이거나 아군이면 불가
+    if (!target || effectivePlayer(target) === cmd.player || target.charmOwner >= 0) return false;
+    if (distSq(caster.x, caster.y, target.x, target.y) > def.range * def.range) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    target.charmOwner = cmd.player;
+    target.charmTicks = def.params.duration;
+    target.targetId = 0;
+    target.state = 'idle';
+    target.windup = 0;
+    return true;
+  });
+
+  registerSpell('shadow-veil', (state, cmd) => {
+    const def = SPELLS['shadow-veil'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    const target = cmd.targetId ? findUnit(state, cmd.targetId) : caster;
+    if (!target || effectivePlayer(target) !== cmd.player) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    target.buffs.push({ kind: 'stealth', ticks: def.params.duration, power: 0 });
+    return true;
+  });
+
+  // ── 천계 ──────────────────────────────
+  registerSpell('revive', (state, cmd) => {
+    const def = SPELLS['revive'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    // 최근 사망 기록 중 자기 진영 가장 최근 1기 (비정예 — killUnit에서 보장)
+    let idx = -1;
+    for (let i = state.recentDeaths.length - 1; i >= 0; i--) {
+      if (state.recentDeaths[i].player === cmd.player) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return false;
+    const dead = state.recentDeaths[idx];
+    state.recentDeaths.splice(idx, 1);
+    caster.spellCooldowns[def.id] = def.cooldown;
+    const u = spawnUnit(state, cmd.player, dead.role, caster.x + 0.8, caster.y + 0.5);
+    u.hp = Math.max(1, Math.floor(u.maxHp * def.params.hpRatio));
+    return true;
+  });
+
+  registerSpell('smite', (state, cmd) => {
+    const def = SPELLS['smite'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster || !cmd.targetId) return false;
+    const target = findUnit(state, cmd.targetId);
+    if (!target || effectivePlayer(target) === cmd.player) return false;
+    if (distSq(caster.x, caster.y, target.x, target.y) > def.range * def.range) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    damageUnit(state, caster, target, def.params.damage);
+    return true;
+  });
+
+  registerSpell('aegis', (state, cmd) => {
+    const def = SPELLS['aegis'];
+    const caster = readyCaster(state, cmd, def);
+    if (!caster) return false;
+    caster.spellCooldowns[def.id] = def.cooldown;
+    const allies: Unit[] = [];
+    state.grid.query(caster.x, caster.y, def.params.radius, allies);
+    for (const n of allies) {
+      if (n.state === 'dead' || effectivePlayer(n) !== cmd.player) continue;
+      n.buffs.push({ kind: 'protect', ticks: def.params.duration, power: def.params.reduce });
+    }
+    return true;
+  });
+
   registerSpell('sacrifice', (state, cmd) => {
     const def = SPELLS['sacrifice'];
     const caster = readyCaster(state, cmd, def);
