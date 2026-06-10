@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import type { FactionId } from '../core/types';
 import { createGame } from '../core/game';
 import { AiController } from '../core/ai/controller';
+import { AudioManager } from './audio';
 import { SimRunner } from './SimRunner';
 import { bakeCommon, bakeFaction } from './bake';
 import { TerrainLayer } from './terrainLayer';
@@ -21,11 +22,13 @@ export interface GameSceneConfig {
   factions: [FactionId, FactionId];
   seed: number;
   mapId?: string;
-  mode: 'play' | 'spectate';
+  mode: 'play' | 'spectate' | 'defense';
+  difficulty?: 'easy' | 'normal' | 'hard';
 }
 
 export class GameScene extends Phaser.Scene {
   private runner!: SimRunner;
+  private audio!: AudioManager;
   private terrain!: TerrainLayer;
   private units!: UnitsLayer;
   private fog!: FogLayer;
@@ -45,6 +48,10 @@ export class GameScene extends Phaser.Scene {
     this.ended = false;
   }
 
+  preload(): void {
+    AudioManager.preload(this);
+  }
+
   create(): void {
     const cfg = this.cfg;
     bakeCommon(this);
@@ -52,13 +59,21 @@ export class GameScene extends Phaser.Scene {
     if (cfg.factions[1] !== cfg.factions[0]) bakeFaction(this, cfg.factions[1]);
 
     const mapDef = cfg.mapId ? mapById(cfg.mapId) : MAPS[cfg.seed % MAPS.length];
-    const state = createGame({ mapAscii: mapDef.ascii, seed: cfg.seed, factions: cfg.factions });
+    const state = createGame({
+      mapAscii: mapDef.ascii,
+      seed: cfg.seed,
+      factions: cfg.factions,
+      defense: cfg.mode === 'defense',
+    });
     this.runner = new SimRunner(state);
-    // AI 연결: 대전 = P1만 / 관전 = 양측
+    // AI 연결: 대전 = P1만 / 관전 = 양측 / 디펜스 = AI 없음 (웨이브 디렉터가 적 제어)
+    const diff = cfg.difficulty ?? 'normal';
     this.runner.ais =
       cfg.mode === 'spectate'
-        ? [new AiController({ player: 0 }), new AiController({ player: 1 })]
-        : [new AiController({ player: 1 })];
+        ? [new AiController({ player: 0, difficulty: diff }), new AiController({ player: 1, difficulty: diff })]
+        : cfg.mode === 'play'
+          ? [new AiController({ player: 1, difficulty: diff })]
+          : [];
     this.terrain = new TerrainLayer(this, state);
     this.units = new UnitsLayer(this, state, this.runner);
     this.fog = new FogLayer(this, state, 0);
@@ -71,11 +86,20 @@ export class GameScene extends Phaser.Scene {
     const start = state.map.starts[0];
     this.cam.centerOn(start.x * TILE, start.y * TILE);
 
-    this.inputCtl = new InputController(this, this.runner, this.units, 0, cfg.mode === 'play');
+    this.inputCtl = new InputController(this, this.runner, this.units, 0, cfg.mode !== 'spectate');
     this.hud = new Hud(this.runner, this.inputCtl, 0, cfg.mode === 'spectate');
     this.minimap = new Minimap(this.hud.minimapCanvas, this, state, () => 0);
     this.minimap.revealAll = cfg.mode === 'spectate';
 
+    this.audio = new AudioManager(this);
+    const prevSelectionChange = this.inputCtl.onSelectionChange;
+    this.inputCtl.onSelectionChange = () => {
+      prevSelectionChange();
+      if (this.units.selection.size > 0) this.audio.play('select', 0.3, 150);
+    };
+    this.input.keyboard!.on('keydown-M', () => {
+      this.hud.toast(this.audio.toggleMute() ? '음소거' : '소리 켜짐');
+    });
     // 디버그: P 일시정지, O 단일틱
     this.input.keyboard!.on('keydown-P', () => {
       this.runner.paused = !this.runner.paused;
@@ -142,12 +166,14 @@ export class GameScene extends Phaser.Scene {
     this.hud.update(delta);
     this.minimap.update(delta);
     this.updateActionCam(delta);
+    this.audio.observe(this.runner.state);
     if (!this.ended && this.runner.state.winner !== -1) this.showResult();
   }
 
   private showResult(): void {
     this.ended = true;
     const w = this.runner.state.winner;
+    this.audio.play(w === 0 ? 'victory' : w === 1 ? 'defeat' : 'select', 0.5, 0);
     const spectate = this.cfg.mode === 'spectate';
     const winFaction = this.runner.state.players[w === 1 ? 1 : 0].faction;
     const msg = w === -2 ? '무승부' : spectate ? `${FACTION_PALETTES[winFaction].name} 승리!` : w === 0 ? '승리!' : '패배...';

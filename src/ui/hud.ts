@@ -79,9 +79,18 @@ export class Hud {
     }
     const p = this.state.players[this.player];
     const cap = Math.min(p.supplyCap, SUPPLY_CAP);
+    let extra = '';
+    const d = this.state.defense;
+    if (d) {
+      const eta = Math.max(0, Math.ceil((d.nextWaveTick - this.state.tick) / 20));
+      const enemies = this.state.units.filter((u) => u.player === 1).length;
+      extra = d.wave >= d.totalWaves
+        ? `<span style="color:#ff9d4d">🌊 최종 웨이브! 잔존 적 ${enemies}</span>`
+        : `<span style="color:#ff9d4d">🌊 웨이브 ${d.wave}/${d.totalWaves} · 다음 ${eta}초 · 적 ${enemies}</span>`;
+    }
     this.resBar.innerHTML =
       `<span class="g">⛏ ${p.gold}</span><span class="w">🌲 ${p.wood}</span>` +
-      `<span class="${p.supply >= cap ? 'full' : ''}">👥 ${p.supply}/${cap}</span>`;
+      `<span class="${p.supply >= cap ? 'full' : ''}">👥 ${p.supply}/${cap}</span>` + extra;
     if (this.toastTimer > 0) {
       this.toastTimer -= deltaMs;
       if (this.toastTimer <= 0) this.toastEl.style.opacity = '0';

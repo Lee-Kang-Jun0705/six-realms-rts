@@ -96,6 +96,26 @@ function fourFortress(): string {
   return b.build();
 }
 
+/** 디펜스 모드 전용 맵 — 비대칭 PvE (대칭 테스트 대상 아님): 상단 스폰 → 깔때기 → 하단 본진 */
+function defenseValley(): string {
+  const b = new MapBuilder(44, 32);
+  // start() 헬퍼는 점대칭 쌍을 만들므로 미사용 — 마커 직접 배치
+  b.set(22, 26, '1'); // P0 본진 (하단 중앙)
+  b.set(22, 4, '2'); // 웨이브 스폰 앵커 (상단 중앙)
+  // 깔때기 바위 (중앙 통로 폭 6)
+  b.blob(8, 13, 7, 4, '#');
+  b.blob(36, 13, 7, 4, '#');
+  b.blob(13, 20, 5, 3, '#');
+  b.blob(31, 20, 5, 3, '#');
+  // 본진 금광 2개 + 측면 숲
+  b.set(15, 27, 'G');
+  b.set(27, 27, 'G');
+  b.blob(5, 27, 3.5, 2.5, 'F');
+  b.blob(38, 27, 3.5, 2.5, 'F');
+  b.blob(22, 11, 3, 2, 'F'); // 통로 중앙 숲 (벌목 시 추가 사선)
+  return b.build();
+}
+
 export const MAPS: MapDef[] = [
   { id: 'twin-canyon', ko: '쌍둥이 협곡', desc: '표준 — 본진 초크와 앞마당, 중앙 개활지', ascii: twinCanyon() },
   { id: 'blood-plain', ko: '혈투 평원', desc: '단거리 개활지 — 러시 메타', ascii: bloodPlain() },
@@ -104,7 +124,15 @@ export const MAPS: MapDef[] = [
   { id: 'four-fortress', ko: '사방 요새', desc: '최장 러시거리 — 장기 운영', ascii: fourFortress() },
 ];
 
+export const DEFENSE_MAP: MapDef = {
+  id: 'defense-valley',
+  ko: '수호의 계곡',
+  desc: '디펜스 — 상단에서 몰려오는 10웨이브 생존',
+  ascii: defenseValley(),
+};
+
 export function mapById(id: string): MapDef {
+  if (id === DEFENSE_MAP.id) return DEFENSE_MAP;
   return MAPS.find((m) => m.id === id) ?? MAPS[0];
 }
 

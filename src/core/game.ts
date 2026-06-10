@@ -13,6 +13,7 @@ import { autoCastTick } from './autoCast';
 import { registerFactionSpells } from './factionSpells';
 import { moveUnits } from './movement';
 import { victoryTick } from './victory';
+import { defenseTick, defenseVictoryTick, setupDefense } from './defense';
 import { BUILDING_STATS, ECON, UNIT_STATS } from '../data/baseline';
 import { StateHasher } from './hash';
 import { distSq } from './vec';
@@ -21,6 +22,8 @@ export interface GameConfig {
   mapAscii: string;
   seed: number;
   factions: [FactionId, FactionId];
+  /** 디펜스 모드: P1 기지 제거 + 웨이브 디렉터 활성화 */
+  defense?: boolean;
 }
 
 export function createGame(cfg: GameConfig): GameState {
@@ -40,6 +43,7 @@ export function createGame(cfg: GameConfig): GameState {
       }
     }
   }
+  if (cfg.defense) setupDefense(state);
   return state;
 }
 
@@ -76,7 +80,12 @@ export function step(state: GameState, commands: Command[]): void {
   statusTick(state);
   moveUnits(state);
   sweepDead(state);
-  victoryTick(state);
+  if (state.defense) {
+    defenseTick(state);
+    defenseVictoryTick(state);
+  } else {
+    victoryTick(state);
+  }
   state.tick++;
 }
 

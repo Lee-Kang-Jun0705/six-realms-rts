@@ -5,6 +5,7 @@ import { buildingCenter, findBuilding, findUnit } from './state';
 import type { Building, Unit } from './types';
 import { ARMOR_PER_LV, BUILDING_STATS, UNIT_STATS, WEAPON_DMG_PER_LV } from '../data/baseline';
 import { destroyBuilding } from './building';
+import { defenseBounty } from './defense';
 import { dirTo, distSq } from './vec';
 import { passable } from './map';
 
@@ -282,6 +283,7 @@ export function killUnit(state: GameState, u: Unit): void {
   }
   u.state = 'dead';
   u.hp = 0;
+  defenseBounty(state, u); // 디펜스 모드 처치 현상금
   const p = state.players[u.player];
   if (u.isSummoned) {
     p.summonCount = Math.max(0, p.summonCount - 1);

@@ -10,6 +10,7 @@ const PLAYABLE: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'c
 export class MenuScene extends Phaser.Scene {
   private picked: FactionId = 'psion';
   private pickedMap = ''; // '' = 랜덤
+  private pickedDiff: 'easy' | 'normal' | 'hard' = 'normal';
   private menuEl: HTMLDivElement | null = null;
 
   constructor() {
@@ -47,9 +48,11 @@ export class MenuScene extends Phaser.Scene {
     <div class="menu-wrap">
       <div class="menu-factions"></div>
       <div class="menu-factions menu-maps"></div>
+      <div class="menu-factions menu-diffs"></div>
       <button class="menu-start">스커미시 시작 (vs AI)</button>
       <button class="menu-start spec">AI 관전 모드 (자동 대전)</button>
-      <div class="menu-hint">조작: 드래그 선택 · 우클릭 명령 · A 어택땅 · Ctrl+1~9 부대지정 · WASD/엣지 스크롤 · 휠 줌 · P 일시정지</div>
+      <button class="menu-start defense">디펜스 모드 (웨이브 생존)</button>
+      <div class="menu-hint">조작: 드래그 선택 · 우클릭 명령 · A 어택땅 · Ctrl+1~9 부대지정 · WASD/엣지 스크롤 · 휠 줌 · P 일시정지 · M 음소거</div>
     </div>`;
     document.body.appendChild(el);
     const fwrap = el.querySelector('.menu-factions:not(.menu-maps)')!;
@@ -83,17 +86,37 @@ export class MenuScene extends Phaser.Scene {
       const others = PLAYABLE.filter((x) => x !== f);
       return others[seed % others.length];
     };
-    const launch = (mode: 'play' | 'spectate'): void => {
+    // 난이도 선택
+    const dwrap = el.querySelector('.menu-diffs')!;
+    const diffs: { id: 'easy' | 'normal' | 'hard'; ko: string }[] = [
+      { id: 'easy', ko: '쉬움' },
+      { id: 'normal', ko: '보통' },
+      { id: 'hard', ko: '어려움' },
+    ];
+    for (const d of diffs) {
+      const btn = document.createElement('button');
+      btn.className = 'menu-f' + (d.id === this.pickedDiff ? ' on' : '');
+      btn.textContent = `AI ${d.ko}`;
+      btn.onclick = () => {
+        this.pickedDiff = d.id;
+        dwrap.querySelectorAll('.menu-f').forEach((b) => b.classList.remove('on'));
+        btn.classList.add('on');
+      };
+      dwrap.appendChild(btn);
+    }
+    const launch = (mode: 'play' | 'spectate' | 'defense'): void => {
       el.remove();
       const seed = (Date.now() % 100000) | 0;
       this.scene.start('game', {
         factions: [this.picked, enemyOf(this.picked, seed)],
         seed,
-        mapId: this.pickedMap || undefined,
+        mapId: mode === 'defense' ? 'defense-valley' : this.pickedMap || undefined,
         mode,
+        difficulty: this.pickedDiff,
       });
     };
-    (el.querySelector('.menu-start:not(.spec)') as HTMLButtonElement).onclick = () => launch('play');
+    (el.querySelector('.menu-start:not(.spec):not(.defense)') as HTMLButtonElement).onclick = () => launch('play');
     (el.querySelector('.menu-start.spec') as HTMLButtonElement).onclick = () => launch('spectate');
+    (el.querySelector('.menu-start.defense') as HTMLButtonElement).onclick = () => launch('defense');
   }
 }

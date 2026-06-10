@@ -11,9 +11,10 @@ test.describe('부팅/메뉴', () => {
     await page.goto('/');
     // 첫 로드는 vite 콜드스타트 + Phaser 번들 변환으로 오래 걸릴 수 있음
     await expect(page.locator('.menu-start').first()).toBeVisible({ timeout: 40000 });
-    // 종족 6개 + 맵 버튼 6개(5종+랜덤)
-    await expect(page.locator('.menu-factions:not(.menu-maps) .menu-f')).toHaveCount(6);
+    // 종족 6 + 맵 6(5종+랜덤) + 난이도 3
+    await expect(page.locator('.menu-factions:not(.menu-maps):not(.menu-diffs) .menu-f')).toHaveCount(6);
     await expect(page.locator('.menu-maps .menu-f')).toHaveCount(6);
+    await expect(page.locator('.menu-diffs .menu-f')).toHaveCount(3);
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
 });
@@ -57,6 +58,18 @@ test.describe('게임 플레이', () => {
     await expect(page.locator('.hud-res')).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(2500);
     await page.screenshot({ path: testInfo.outputPath('hud.png'), fullPage: false });
+  });
+});
+
+test.describe('디펜스 모드', () => {
+  test('디펜스 시작 → 웨이브 HUD 표시 + 에러 0', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/');
+    await page.locator('.menu-start.defense').click();
+    await expect(page.locator('.hud-res')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.hud-res')).toContainText('웨이브', { timeout: 10000 });
+    expect(errors, errors.join('\n')).toHaveLength(0);
   });
 });
 

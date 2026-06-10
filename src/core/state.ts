@@ -32,6 +32,8 @@ export interface GameState {
   revealers: { player: PlayerId; x: number; y: number; radius: number; untilTick: number }[];
   /** 부활 스펠용 사망 기록 (비정예/비소환만, 최대 12) */
   recentDeaths: { player: PlayerId; role: UnitRole; tick: number }[];
+  /** 디펜스 모드 상태 (없으면 일반 대전) */
+  defense?: import('./defense').DefenseState;
 }
 
 export function createPlayer(faction: FactionId): PlayerState {
