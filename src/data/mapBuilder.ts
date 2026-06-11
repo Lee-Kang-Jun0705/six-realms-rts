@@ -46,6 +46,12 @@ export class MapBuilder {
     this.set(this.width - 1 - x, this.height - 1 - y, '2');
   }
 
+  /** 3v3 시작점 쌍 — 팀A(aIdx 1~3) + 점대칭 팀B(aIdx+3 → 4~6). parseMap이 '1'~'6' 순서로 읽음 */
+  spawnPair(x: number, y: number, aIdx: number): void {
+    this.set(x, y, String(aIdx));
+    this.set(this.width - 1 - x, this.height - 1 - y, String(aIdx + 3));
+  }
+
   /** 금광 2x2 앵커 — 대칭 쌍 자동 배치 (mirrorPair=false면 중앙 단독) */
   mine(x: number, y: number, mirrorPair = true): void {
     this.set(x, y, 'G');
@@ -59,10 +65,11 @@ export class MapBuilder {
       const x = i % this.width;
       const y = (i / this.width) | 0;
       const ch = this.g[y][x];
-      if (ch === '1' || ch === '2' || ch === 'G') continue;
+      if ((ch >= '1' && ch <= '9') || ch === 'G') continue;
       const mx = this.width - 1 - x;
       const my = this.height - 1 - y;
-      if (this.g[my][mx] === '1' || this.g[my][mx] === '2' || this.g[my][mx] === 'G') continue;
+      const mch = this.g[my][mx];
+      if ((mch >= '1' && mch <= '9') || mch === 'G') continue;
       this.g[my][mx] = ch;
     }
   }

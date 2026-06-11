@@ -115,6 +115,32 @@ function defenseValley(): string {
   return b.build();
 }
 
+/** 3v3 대형맵 — 팀A 좌측 3본진 + 점대칭 팀B 우측 3본진, 중앙 쟁탈 금광 */
+function trinityFields(): string {
+  const b = new MapBuilder(144, 108);
+  // 팀A 좌측 3 본진 (세로 분산) → spawnPair가 점대칭 팀B 우측 자동 생성
+  b.spawnPair(16, 22, 1);
+  b.spawnPair(16, 54, 2);
+  b.spawnPair(16, 86, 3);
+  // 본진 금광 (각 본진 인접, 점대칭 쌍 자동)
+  b.mine(22, 16);
+  b.mine(22, 48);
+  b.mine(22, 80);
+  // 중앙 쟁탈 금광 쌍
+  b.mine(66, 50);
+  // 중앙 지형: 숲 섬(시야 차단) + 바위 초크(직선 러시 차단)
+  b.blob(72, 30, 9, 6, 'F');
+  b.blob(72, 78, 9, 6, 'F');
+  b.rect(68, 46, 8, 16, '#');
+  b.mirror();
+  return b.build();
+}
+
+/** 3v3 전용 맵 (팀 매핑 [0,0,0,1,1,1]) */
+export const MAPS_3V3: MapDef[] = [
+  { id: 'trinity-fields', ko: '삼위 평원', desc: '3v3 — 좌우 3본진 진영, 중앙 금광 쟁탈', ascii: trinityFields() },
+];
+
 export const MAPS: MapDef[] = [
   { id: 'twin-canyon', ko: '쌍둥이 협곡', desc: '표준 — 본진 초크와 앞마당, 중앙 개활지', ascii: twinCanyon() },
   { id: 'blood-plain', ko: '혈투 평원', desc: '단거리 개활지 — 러시 메타', ascii: bloodPlain() },
@@ -132,7 +158,7 @@ export const DEFENSE_MAP: MapDef = {
 
 export function mapById(id: string): MapDef {
   if (id === DEFENSE_MAP.id) return DEFENSE_MAP;
-  return MAPS.find((m) => m.id === id) ?? MAPS[0];
+  return MAPS.find((m) => m.id === id) ?? MAPS_3V3.find((m) => m.id === id) ?? MAPS[0];
 }
 
 /** 테스트 전용 맵 (Phase 1 PoC — 초크/숲/금광 고정 배치) */

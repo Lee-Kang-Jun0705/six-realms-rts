@@ -23,7 +23,7 @@ export interface WorldMap {
   wood: Uint16Array; // 숲 타일 잔여 목재
   occupancy: Int32Array; // 건물/금광 점유 엔티티 id (0=빈칸)
   terrainVersion: number; // 벌목 등 통행 변화 시 증가 (FlowField 무효화 키)
-  starts: [StartPos, StartPos];
+  starts: StartPos[]; // 시작점 N개 (1v1=2, 3v3=6). 마커 '1'~'9' 순서
   mineSpots: { tileX: number; tileY: number }[]; // 금광 앵커 (엔티티는 state에서 생성)
 }
 
@@ -35,7 +35,7 @@ export function parseMap(ascii: string): WorldMap {
   const width = rows[0].length;
   const terrain = new Uint8Array(width * height);
   const wood = new Uint16Array(width * height);
-  const starts: StartPos[] = [{ x: 4, y: 4 }, { x: width - 5, y: height - 5 }];
+  const startMap = new Map<number, StartPos>(); // 마커 idx → 위치 ('1'=0..'9'=8)
   const mineSpots: { tileX: number; tileY: number }[] = [];
 
   for (let y = 0; y < height; y++) {
@@ -50,11 +50,18 @@ export function parseMap(ascii: string): WorldMap {
       else if (ch === '#') terrain[i] = T_ROCK;
       else if (ch === ',') terrain[i] = T_DIRT;
       else terrain[i] = T_GRASS;
-      if (ch === '1') starts[0] = { x, y };
-      if (ch === '2') starts[1] = { x, y };
+      const code = ch.charCodeAt(0);
+      if (code >= 49 && code <= 57) startMap.set(code - 49, { x, y }); // '1'~'9'
       if (ch === 'G') mineSpots.push({ tileX: x, tileY: y });
     }
   }
+  // 마커 순서대로 배열화 (연속 가정). 마커 없으면 기본 1v1 대각
+  let starts: StartPos[] = [];
+  for (let i = 0; i < 9; i++) {
+    const s = startMap.get(i);
+    if (s) starts.push(s);
+  }
+  if (starts.length === 0) starts = [{ x: 4, y: 4 }, { x: width - 5, y: height - 5 }];
   return {
     width,
     height,
@@ -62,7 +69,7 @@ export function parseMap(ascii: string): WorldMap {
     wood,
     occupancy: new Int32Array(width * height),
     terrainVersion: 0,
-    starts: [starts[0], starts[1]],
+    starts,
     mineSpots,
   };
 }
