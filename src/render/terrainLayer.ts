@@ -61,17 +61,20 @@ export class TerrainLayer {
     // 128px 타일 이미지를 TILE(32)로 축소 draw하기 위한 재사용 스탬프
     const stamp = this.scene.add.image(0, 0, tileImageKey('grass')).setOrigin(0, 0).setVisible(false);
     stamp.setDisplaySize(TILE, TILE);
+    // 청크당 단일 배치 패스 (타일마다 draw = GPU 플러시 폭발 → 대형맵 7.5초 방지)
+    rt.beginDraw();
     for (let y = 0; y < th; y++) {
       for (let x = 0; x < tw; x++) {
         const tex = this.baseTexture(tx0 + x, ty0 + y);
         if (this.scene.textures.exists(tex.img)) {
           stamp.setTexture(tex.img).setDisplaySize(TILE, TILE);
-          rt.draw(stamp, x * TILE, y * TILE);
+          rt.batchDraw(stamp, x * TILE, y * TILE);
         } else {
-          rt.draw(tex.proc, x * TILE, y * TILE); // 절차 폴백 (32px)
+          rt.batchDrawFrame(tex.proc, undefined, x * TILE, y * TILE); // 절차 폴백 (32px)
         }
       }
     }
+    rt.endDraw();
     stamp.destroy();
   }
 
