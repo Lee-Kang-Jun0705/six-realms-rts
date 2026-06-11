@@ -52,6 +52,15 @@ export function preloadBuildingImages(scene: Phaser.Scene, faction: FactionId): 
   }
 }
 
+// AI 지형 타일 (있으면 절차 t-* 대신 사용). 키: tileimg-{name}
+const TILE_NAMES = ['grass', 'grass2', 'dirt', 'forest', 'water', 'rock'] as const;
+export function tileImageKey(name: string): string {
+  return `tileimg-${name}`;
+}
+export function preloadTileImages(scene: Phaser.Scene): void {
+  for (const n of TILE_NAMES) scene.load.image(tileImageKey(n), `tiles/${n}.png`);
+}
+
 /** 매치에 등장하는 종족만 베이크 (lazy) */
 export function bakeFaction(scene: Phaser.Scene, faction: FactionId): void {
   const g = scene.add.graphics();

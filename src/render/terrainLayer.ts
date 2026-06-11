@@ -7,6 +7,7 @@ import type { GameState } from '../core/state';
 import { T_DIRT, T_FOREST, T_GRASS, T_ROCK, T_WATER, tileIndex } from '../core/map';
 import { TILE } from '../core/const';
 import { mulberry32 } from '../core/rng';
+import { tileImageKey } from './bake';
 
 const CHUNK = 16; // 청크당 타일 수 (16*32 = 512px)
 
@@ -31,16 +32,17 @@ export class TerrainLayer {
       for (let cx = 0; cx < this.chunksX; cx++) this.bakeChunk(cx, cy);
   }
 
-  private baseTexture(x: number, y: number): string {
+  /** [이미지키, 절차키] — 이미지 있으면 그것, 없으면 절차 폴백 */
+  private baseTexture(x: number, y: number): { img: string; proc: string } {
     const i = tileIndex(this.state.map, x, y);
     const t = this.state.map.terrain[i];
     const v = this.variant[i];
-    if (t === T_GRASS) return `t-grass${v}`;
-    if (t === T_DIRT) return 't-dirt';
-    if (t === T_FOREST) return 't-forest0';
-    if (t === T_WATER) return 't-water0';
-    if (t === T_ROCK) return 't-rock';
-    return 't-grass0';
+    if (t === T_GRASS) return { img: tileImageKey(v ? 'grass2' : 'grass'), proc: `t-grass${v}` };
+    if (t === T_DIRT) return { img: tileImageKey('dirt'), proc: 't-dirt' };
+    if (t === T_FOREST) return { img: tileImageKey('forest'), proc: 't-forest0' };
+    if (t === T_WATER) return { img: tileImageKey('water'), proc: 't-water0' };
+    if (t === T_ROCK) return { img: tileImageKey('rock'), proc: 't-rock' };
+    return { img: tileImageKey('grass'), proc: 't-grass0' };
   }
 
   private bakeChunk(cx: number, cy: number): void {
@@ -56,8 +58,21 @@ export class TerrainLayer {
       this.chunks.set(key, rt);
     }
     rt.clear();
-    for (let y = 0; y < th; y++)
-      for (let x = 0; x < tw; x++) rt.draw(this.baseTexture(tx0 + x, ty0 + y), x * TILE, y * TILE);
+    // 128px 타일 이미지를 TILE(32)로 축소 draw하기 위한 재사용 스탬프
+    const stamp = this.scene.add.image(0, 0, tileImageKey('grass')).setOrigin(0, 0).setVisible(false);
+    stamp.setDisplaySize(TILE, TILE);
+    for (let y = 0; y < th; y++) {
+      for (let x = 0; x < tw; x++) {
+        const tex = this.baseTexture(tx0 + x, ty0 + y);
+        if (this.scene.textures.exists(tex.img)) {
+          stamp.setTexture(tex.img).setDisplaySize(TILE, TILE);
+          rt.draw(stamp, x * TILE, y * TILE);
+        } else {
+          rt.draw(tex.proc, x * TILE, y * TILE); // 절차 폴백 (32px)
+        }
+      }
+    }
+    stamp.destroy();
   }
 
   update(deltaMs: number): void {

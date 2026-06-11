@@ -6,7 +6,7 @@ import { createGame } from '../core/game';
 import { AiController } from '../core/ai/controller';
 import { AudioManager } from './audio';
 import { SimRunner } from './SimRunner';
-import { bakeCommon, bakeFaction, preloadBuildingImages, preloadUnitImages } from './bake';
+import { bakeCommon, bakeFaction, preloadBuildingImages, preloadTileImages, preloadUnitImages } from './bake';
 import { TerrainLayer } from './terrainLayer';
 import { UnitsLayer } from './unitsLayer';
 import { ProjectileLayer } from './projectileLayer';
@@ -54,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     AudioManager.preload(this);
     // AI 정적 유닛 이미지 (있는 종족만 — 없으면 onerror로 절차 드로잉 폴백)
     this.load.on('loaderror', () => {}); // 누락 이미지 무시
+    preloadTileImages(this);
     for (const f of new Set(this.cfg.factions)) {
       preloadUnitImages(this, f);
       preloadBuildingImages(this, f);
