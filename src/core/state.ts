@@ -1,7 +1,7 @@
 // 게임 상태 컨테이너 + 엔티티 생성/조회 (결정성: 배열 push 순서 = id 오름차순)
 
 import type {
-  Building, BuildingKind, Command, FactionId, GoldMine, PlayerId, PlayerState, Unit, UnitRole, UsageCounters,
+  Building, BuildingKind, Command, FactionId, GoldMine, PlayerId, PlayerState, TeamId, Unit, UnitRole, UsageCounters,
 } from './types';
 import type { WorldMap } from './map';
 import { placeMine } from './map';
@@ -19,10 +19,12 @@ export interface GameState {
   units: Unit[];
   buildings: Building[];
   mines: GoldMine[];
-  players: [PlayerState, PlayerState];
-  fog: [Fog, Fog];
+  players: PlayerState[];
+  fog: Fog[];
+  /** 플레이어 → 팀 매핑 (1v1=[0,1] 각자팀, 3v3=[0,0,0,1,1,1]). 승패·적 판정 기준 */
+  teams: TeamId[];
   nextId: number;
-  /** -1 진행중 / 0,1 승자 / -2 무승부 */
+  /** -1 진행중 / 승리 팀의 대표 플레이어 id / -2 무승부 */
   winner: PlayerId | -1 | -2;
   counters: UsageCounters;
   commandLog: { tick: number; cmds: Command[] }[];
@@ -61,7 +63,9 @@ export function createPlayer(faction: FactionId): PlayerState {
   };
 }
 
-export function createState(map: WorldMap, seed: number, factions: [FactionId, FactionId]): GameState {
+export function createState(
+  map: WorldMap, seed: number, factions: FactionId[], teams?: TeamId[],
+): GameState {
   const state: GameState = {
     tick: 0,
     seed,
@@ -70,8 +74,10 @@ export function createState(map: WorldMap, seed: number, factions: [FactionId, F
     units: [],
     buildings: [],
     mines: [],
-    players: [createPlayer(factions[0]), createPlayer(factions[1])],
-    fog: [new Fog(map), new Fog(map)],
+    players: factions.map(createPlayer),
+    fog: factions.map(() => new Fog(map)),
+    // 팀 미지정 = 각자 팀 (1v1/FFA). 3v3은 [0,0,0,1,1,1] 전달
+    teams: teams ?? factions.map((_, i) => i),
     nextId: 1,
     winner: -1,
     counters: { unitsProduced: {}, spellsCast: {}, engagements: 0, buildingsBuilt: {}, castersByFaction: {} },

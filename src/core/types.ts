@@ -1,6 +1,8 @@
 // 시뮬 코어 타입 정의 — 모든 좌표는 타일 단위 float (렌더에서 TILE 곱해 픽셀화)
 
-export type PlayerId = 0 | 1;
+// 플레이어 인덱스 (0..N-1). 1v1=2인, 3v3=6인. 팀은 state.teams[player]로 매핑
+export type PlayerId = number;
+export type TeamId = number;
 export type EntityId = number;
 
 export type FactionId = 'psion' | 'murim' | 'fantasy' | 'yokai' | 'demon' | 'celestial' | 'dummy';
