@@ -18,7 +18,7 @@ export class CameraControls {
       up: kb.addKey('UP'), left: kb.addKey('LEFT'), down: kb.addKey('DOWN'), right: kb.addKey('RIGHT'),
     };
     scene.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
-      const z = Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.45, 1.6);
+      const z = Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.5, 2.4);
       cam.setZoom(z);
     });
   }

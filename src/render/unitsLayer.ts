@@ -65,7 +65,7 @@ export class UnitsLayer {
       if (!v) {
         const startKey = useImage ? unitImageKey(u.faction, u.role) : unitKey(u.faction, u.role, 'idle', 0);
         const sprite = this.scene.add.image(0, 0, startKey).setOrigin(0.5, 0.875);
-        if (useImage) sprite.setDisplaySize(46, 46); // 256px 고퀄 원본 → 전신 디테일 보이게 약 1.4타일
+        if (useImage) sprite.setDisplaySize(52, 52); // 256px 고퀄 원본 → 전신 디테일 보이게 (카메라 기본줌 1.4와 합산)
         v = { sprite, faction: u.faction, role: u.role, player: u.player, facing: 1, lastX: u.x, lastY: u.y };
         this.views.set(u.id, v);
       }

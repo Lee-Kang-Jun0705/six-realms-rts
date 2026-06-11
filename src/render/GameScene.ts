@@ -94,6 +94,7 @@ export class GameScene extends Phaser.Scene {
     this.units.viewPlayer = cfg.mode === 'spectate' ? -1 : 0;
 
     this.cam = new CameraControls(this, state.map.width, state.map.height);
+    this.cameras.main.setZoom(1.4); // 기본 줌인 — 유닛/건물 잘 보이게 (휠로 0.45~1.6 조절)
     const start = state.map.starts[0];
     this.cam.centerOn(start.x * TILE, start.y * TILE);
 
