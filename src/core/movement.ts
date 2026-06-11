@@ -5,8 +5,8 @@
 import type { GameState } from './state';
 import type { Unit, UnitState } from './types';
 import type { PassClass } from './map';
-import { inBounds, passable } from './map';
-import { sampleFlow } from './pathfind/flowfield';
+import { inBounds, orientationOf, passable } from './map';
+import { sampleFlowTile } from './pathfind/flowfield';
 import { UNIT_STATS } from '../data/baseline';
 import { normalize } from './vec';
 
@@ -52,21 +52,32 @@ export function moveUnits(state: GameState): void {
   }
 }
 
+/** 목적지 타일 산출 — 정수 경계(금광 중심 등)에서 floor가 양 진영 모두 +방향으로
+ * 타이브레이크하면 σ(점대칭)가 깨짐 → 미러 진영은 -1 타일 선택 (#44 포지션 편향) */
+function destTile(v: number, sign: 1 | -1): number {
+  const f = Math.floor(v);
+  return sign > 0 || f !== v ? f : Math.max(0, f - 1);
+}
+
 function stepUnit(state: GameState, u: Unit, dist: number, neighbors: Unit[]): void {
   const cls = passClassOf(u);
-  const destTx = Math.floor(u.destX);
-  const destTy = Math.floor(u.destY);
+  const sign = orientationOf(state.map, u.player);
+  const destTx = destTile(u.destX, sign);
+  const destTy = destTile(u.destY, sign);
+  // 유닛 자신의 타일도 동일한 σ-안정 규칙 — 정수 위치(스폰 직후 등) 경계 비대칭 차단 (#44)
+  const utx = destTile(u.x, sign);
+  const uty = destTile(u.y, sign);
   let dirX: number;
   let dirY: number;
 
-  if (Math.floor(u.x) === destTx && Math.floor(u.y) === destTy) {
+  if (utx === destTx && uty === destTy) {
     // 목적지 타일 내부 — 직접 벡터
     const d = normalize(u.destX - u.x, u.destY - u.y);
     dirX = d.x;
     dirY = d.y;
   } else {
     const field = state.flowCache.get(state.map, destTx, destTy, cls);
-    const flow = sampleFlow(state.map, field, u.x, u.y);
+    const flow = sampleFlowTile(state.map, field, utx, uty);
     if (!flow.reachable) {
       if (u.state === 'moving') u.state = 'idle';
       return;

@@ -6,7 +6,7 @@ import type { Building, BuildingKind, Command, PlayerId, Unit, UnitRole } from '
 import type { BuildOrder } from './types';
 import { BUILDING_STATS, ECON, UNIT_STATS, UPGRADES } from '../../data/baseline';
 import { canPlace, playerTier } from '../building';
-import { T_FOREST, tileIndex } from '../map';
+import { T_FOREST, orientationOf, tileIndex } from '../map';
 import { SUPPLY_CAP } from '../const';
 
 export interface AiMemory {
@@ -40,7 +40,7 @@ export function economyTickAi(state: GameState, me: PlayerId, mem: AiMemory, cmd
   for (const u of workers) {
     if (u.state !== 'idle') continue;
     if (onWood < woodWorkersWant) {
-      const f = nearestForest(state, hqC.x, hqC.y);
+      const f = nearestForest(state, me, hqC.x, hqC.y);
       if (f) {
         cmds.push({ type: 'harvest', player: me, unitIds: [u.id], x: f.x + 0.5, y: f.y + 0.5 });
         onWood++;
@@ -193,13 +193,21 @@ function requestBuild(state: GameState, me: PlayerId, mem: AiMemory, kind: Build
   return true;
 }
 
+/** HQ 주변 링 탐색 — 순회 방향을 진영별 미러 (#44: 고정 좌상단 우선은 포지션 편향).
+ * 미러 진영은 앵커를 -(w-1,h-1) 보정 — 풋프린트(중심) 기준 점대칭 유지 */
 function findSpot(state: GameState, me: PlayerId, kind: BuildingKind, cx: number, cy: number): { x: number; y: number } | null {
+  const sign = orientationOf(state.map, me);
+  const stats = BUILDING_STATS[kind];
+  const ox = sign > 0 ? 0 : -(stats.w - 1);
+  const oy = sign > 0 ? 0 : -(stats.h - 1);
   for (let r = 4; r <= 14; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
+    for (let i = 0; i <= 2 * r; i++) {
+      const dy = sign > 0 ? i - r : r - i;
+      for (let j = 0; j <= 2 * r; j++) {
+        const dx = sign > 0 ? j - r : r - j;
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; // 링만
-        const x = cx + dx;
-        const y = cy + dy;
+        const x = cx + dx + ox;
+        const y = cy + dy + oy;
         if (canPlace(state, me, kind, x, y) === null) return { x, y };
       }
     }
@@ -221,14 +229,18 @@ function nearestWorker(state: GameState, me: PlayerId, x: number, y: number): Un
   return best;
 }
 
-function nearestForest(state: GameState, x: number, y: number): { x: number; y: number } | null {
+/** 최근접 숲 — 거리는 타일 중심 기준, 동거리 tie-break는 진영 방향 미러 (#44 포지션 편향) */
+function nearestForest(state: GameState, me: PlayerId, x: number, y: number): { x: number; y: number } | null {
   let best: { x: number; y: number } | null = null;
   let bestD = Infinity;
   const map = state.map;
-  for (let ty = 0; ty < map.height; ty++) {
-    for (let tx = 0; tx < map.width; tx++) {
+  const sign = orientationOf(map, me);
+  for (let i = 0; i < map.height; i++) {
+    const ty = sign > 0 ? i : map.height - 1 - i;
+    for (let j = 0; j < map.width; j++) {
+      const tx = sign > 0 ? j : map.width - 1 - j;
       if (map.terrain[tileIndex(map, tx, ty)] !== T_FOREST) continue;
-      const d = (tx - x) ** 2 + (ty - y) ** 2;
+      const d = (tx + 0.5 - x) ** 2 + (ty + 0.5 - y) ** 2;
       if (d < bestD) {
         bestD = d;
         best = { x: tx, y: ty };

@@ -86,8 +86,11 @@ export class FlowCache {
 
 /** 유닛 위치의 흐름 방향 샘플 */
 export function sampleFlow(map: WorldMap, field: FlowField, x: number, y: number): { x: number; y: number; reachable: boolean } {
-  const tx = Math.floor(x);
-  const ty = Math.floor(y);
+  return sampleFlowTile(map, field, Math.floor(x), Math.floor(y));
+}
+
+/** 타일 좌표 직접 샘플 — 정수 경계 타이브레이크를 호출자(진영별 σ-안정 규칙)가 소유 (#44) */
+export function sampleFlowTile(map: WorldMap, field: FlowField, tx: number, ty: number): { x: number; y: number; reachable: boolean } {
   if (!inBounds(map, tx, ty)) return { x: 0, y: 0, reachable: false };
   const i = tileIndex(map, tx, ty);
   if (field.dist[i] === -1) return { x: 0, y: 0, reachable: false };

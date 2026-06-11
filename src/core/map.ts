@@ -74,6 +74,15 @@ export function parseMap(ascii: string): WorldMap {
   };
 }
 
+/** 진영 방향 부호 — 점대칭 맵에서 위/좌 진영 = +1, 미러 진영 = -1 (#44 포지션 편향 제거).
+ * 고정 방향 스캔/오프셋은 이 부호로 미러링해야 σ(180도 회전) 대칭이 보존된다. */
+export function orientationOf(map: WorldMap, player: number): 1 | -1 {
+  const s = map.starts[player] ?? { x: 0, y: 0 };
+  const dy = 2 * s.y - (map.height - 1);
+  const dx = 2 * s.x - (map.width - 1);
+  return dy < 0 || (dy === 0 && dx < 0) ? 1 : -1;
+}
+
 export function inBounds(map: WorldMap, tx: number, ty: number): boolean {
   return tx >= 0 && ty >= 0 && tx < map.width && ty < map.height;
 }

@@ -2,6 +2,7 @@
 
 import type { GameState } from '../state';
 import { buildingCenter } from '../state';
+import { orientationOf } from '../map';
 import type { Command, PlayerId, Unit } from '../types';
 import type { Intel, Personality, SquadState } from './types';
 import { unitValue } from './intel';
@@ -39,6 +40,7 @@ export function squadTickAi(
   const hq = myBuildings(state, me, 'hq')[0];
   if (!hq) return;
   const home = buildingCenter(hq);
+  const sign = orientationOf(state.map, me); // 고정 오프셋 진영별 미러 (#44)
   const enemyBase = intel.enemyBasePos ?? { x: state.map.width / 2, y: state.map.height / 2 };
 
   // 방어 최우선: 본진 위협 감지
@@ -51,7 +53,7 @@ export function squadTickAi(
   switch (sq.state) {
     case 'defend': {
       const ids = army.map((u) => u.id);
-      if (ids.length > 0) cmds.push({ type: 'attackMove', player: me, unitIds: ids, x: home.x, y: home.y + 2 });
+      if (ids.length > 0) cmds.push({ type: 'attackMove', player: me, unitIds: ids, x: home.x, y: home.y + 2 * sign });
       break;
     }
     case 'gather': {
@@ -77,7 +79,7 @@ export function squadTickAi(
       if (value < sq.attackStartValue * 0.4) {
         sq.state = 'retreat';
         const ids = army.map((u) => u.id);
-        if (ids.length > 0) cmds.push({ type: 'move', player: me, unitIds: ids, x: home.x, y: home.y + 3 });
+        if (ids.length > 0) cmds.push({ type: 'move', player: me, unitIds: ids, x: home.x, y: home.y + 3 * sign });
         break;
       }
       // 새로 생산된 idle 병력 합류
@@ -145,8 +147,9 @@ export function scoutTickAi(
   if (fox) {
     sq.lastScoutTick = state.tick;
     sq.scoutId = fox.id;
+    const s = orientationOf(state.map, me);
     cmds.push({ type: 'cast', player: me, unitIds: [fox.id], spellId: 'disguise' });
-    cmds.push({ type: 'move', player: me, unitIds: [fox.id], x: intel.enemyBasePos.x + 2, y: intel.enemyBasePos.y + 2 });
+    cmds.push({ type: 'move', player: me, unitIds: [fox.id], x: intel.enemyBasePos.x + 2 * s, y: intel.enemyBasePos.y + 2 * s });
     return;
   }
   const alive = state.units.find((u) => u.id === sq.scoutId && u.state !== 'dead');
@@ -155,7 +158,8 @@ export function scoutTickAi(
   if (!worker) return;
   sq.scoutId = worker.id;
   sq.lastScoutTick = state.tick;
-  cmds.push({ type: 'move', player: me, unitIds: [worker.id], x: intel.enemyBasePos.x + 3, y: intel.enemyBasePos.y + 3 });
+  const s2 = orientationOf(state.map, me);
+  cmds.push({ type: 'move', player: me, unitIds: [worker.id], x: intel.enemyBasePos.x + 3 * s2, y: intel.enemyBasePos.y + 3 * s2 });
 }
 
 function rallyPoint(state: GameState, home: { x: number; y: number }, enemy: { x: number; y: number }): { x: number; y: number } {

@@ -44,6 +44,19 @@ describe.each(MAPS)('맵 검증: $ko', (def) => {
     expect(Math.abs(d1 - d2), `금광 거리 P0=${d1.toFixed(2)} P1=${d2.toFixed(2)}`).toBeLessThan(0.01);
   });
 
+  it('금광 풋프린트(2x2) 점대칭 — 앵커만 대칭이면 (1,1) 어긋남 (#44)', () => {
+    const fp = new Set<number>();
+    for (const s of map.mineSpots)
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) fp.add((s.tileY + dy) * map.width + s.tileX + dx);
+    let viol = 0;
+    for (const i of fp) {
+      const x = i % map.width;
+      const y = (i / map.width) | 0;
+      if (!fp.has((map.height - 1 - y) * map.width + (map.width - 1 - x))) viol++;
+    }
+    expect(viol, `풋프린트 비대칭 타일 ${viol}개`).toBe(0);
+  });
+
   it('시작점 주변 본진(3x3)+생산 공간 확보', () => {
     for (const s of map.starts) {
       let free = 0;

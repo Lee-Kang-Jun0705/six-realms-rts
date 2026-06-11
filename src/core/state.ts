@@ -4,7 +4,7 @@ import type {
   Building, BuildingKind, Command, FactionId, GoldMine, PlayerId, PlayerState, TeamId, Unit, UnitRole, UsageCounters,
 } from './types';
 import type { WorldMap } from './map';
-import { placeMine } from './map';
+import { orientationOf, placeMine } from './map';
 import { Fog } from './fog';
 import { RngStreams } from './rng';
 import { FlowCache } from './pathfind/flowfield';
@@ -141,7 +141,11 @@ export function addBuilding(
     hp: complete ? maxHp : Math.max(1, Math.floor(maxHp * 0.1)),
     maxHp,
     buildProgress: complete ? 1 : 0,
-    queue: [], rallyX: tileX + s.w / 2, rallyY: tileY + s.h + 0.5, attackCooldown: 0,
+    queue: [],
+    rallyX: tileX + s.w / 2,
+    // 기본 랠리 = 건물 전방(진영별 미러) — 고정 '아래'는 포지션 편향 (#44)
+    rallyY: orientationOf(state.map, player) > 0 ? tileY + s.h + 0.5 : tileY - 0.5,
+    attackCooldown: 0,
   };
   state.buildings.push(b);
   if (complete) state.players[player].supplyCap += s.supplyProvided;

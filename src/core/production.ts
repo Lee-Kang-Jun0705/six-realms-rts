@@ -4,7 +4,7 @@ import type { GameState } from './state';
 import { spawnUnit } from './state';
 import type { Building, PlayerId, UnitRole } from './types';
 import { BUILDING_STATS, TIER_UP, UNIT_STATS, UPGRADES } from '../data/baseline';
-import { passable } from './map';
+import { orientationOf, passable } from './map';
 import { SUPPLY_CAP } from './const';
 
 const MAX_QUEUE = 5;
@@ -102,16 +102,24 @@ function completeUnit(state: GameState, b: Building, role: UnitRole): void {
   u.destY = b.rallyY;
 }
 
-/** 건물 외곽 시계방향 스캔 — 첫 통행 가능 타일 (결정적) */
+/** 건물 외곽 링 스캔 — 첫 통행 가능 타일 (결정적).
+ * 순회 방향은 진영별 미러 — 고정 좌상단 우선은 전선 거리 포지션 편향 (#44) */
 function findSpawnSpot(state: GameState, b: Building): { x: number; y: number } {
+  const sign = orientationOf(state.map, b.player);
   for (let ring = 1; ring <= 4; ring++) {
-    for (let y = b.tileY - ring; y <= b.tileY + b.h + ring - 1; y++) {
-      for (let x = b.tileX - ring; x <= b.tileX + b.w + ring - 1; x++) {
+    const y0 = b.tileY - ring;
+    const y1 = b.tileY + b.h + ring - 1;
+    const x0 = b.tileX - ring;
+    const x1 = b.tileX + b.w + ring - 1;
+    for (let i = 0; i <= y1 - y0; i++) {
+      const y = sign > 0 ? y0 + i : y1 - i;
+      for (let j = 0; j <= x1 - x0; j++) {
+        const x = sign > 0 ? x0 + j : x1 - j;
         const onEdge = x < b.tileX || x >= b.tileX + b.w || y < b.tileY || y >= b.tileY + b.h;
         if (!onEdge) continue;
         if (passable(state.map, x, y, 'ground')) return { x: x + 0.5, y: y + 0.5 };
       }
     }
   }
-  return { x: b.tileX + b.w / 2, y: b.tileY + b.h + 1 }; // 폴백
+  return { x: b.tileX + b.w / 2, y: sign > 0 ? b.tileY + b.h + 1 : b.tileY - 1 }; // 폴백
 }

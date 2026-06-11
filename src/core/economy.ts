@@ -5,7 +5,7 @@ import type { GameState } from './state';
 import { buildingCenter, findMine, mineCenter } from './state';
 import type { Building, Unit } from './types';
 import { ECON } from '../data/baseline';
-import { T_FOREST, chopForest, freeRect, tileIndex } from './map';
+import { T_FOREST, chopForest, freeRect, orientationOf, tileIndex } from './map';
 import { distSq } from './vec';
 
 const MINE_REACH = 2.1; // 금광 중심 도달 판정 (2x2 점유 외곽)
@@ -146,16 +146,24 @@ function retargetOrIdle(state: GameState, u: Unit): void {
   }
 }
 
-/** 기존 벌목 지점 주변 최근접 숲 타일 탐색 (결정적: 거리→y→x 순) */
+/** 기존 벌목 지점 주변 최근접 숲 타일 탐색 (결정적).
+ * 동거리 tie-break는 진영 방향으로 미러 — 고정 y→x 순회는 포지션 편향 (#44) */
 function retargetForest(state: GameState, u: Unit): boolean {
   const cx = u.forestX >= 0 ? u.forestX : Math.floor(u.x);
   const cy = u.forestY >= 0 ? u.forestY : Math.floor(u.y);
+  const sign = orientationOf(state.map, u.player);
   let bestX = -1;
   let bestY = -1;
   let bestD = Infinity;
   const R = 8;
-  for (let y = Math.max(0, cy - R); y <= Math.min(state.map.height - 1, cy + R); y++) {
-    for (let x = Math.max(0, cx - R); x <= Math.min(state.map.width - 1, cx + R); x++) {
+  const y0 = Math.max(0, cy - R);
+  const y1 = Math.min(state.map.height - 1, cy + R);
+  const x0 = Math.max(0, cx - R);
+  const x1 = Math.min(state.map.width - 1, cx + R);
+  for (let i = 0; i <= y1 - y0; i++) {
+    const y = sign > 0 ? y0 + i : y1 - i;
+    for (let j = 0; j <= x1 - x0; j++) {
+      const x = sign > 0 ? x0 + j : x1 - j;
       if (state.map.terrain[tileIndex(state.map, x, y)] !== T_FOREST) continue;
       const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
       if (d < bestD) {

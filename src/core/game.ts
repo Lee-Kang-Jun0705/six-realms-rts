@@ -3,7 +3,7 @@
 import type { FactionId, Command, GoldMine, TeamId } from './types';
 import type { GameState } from './state';
 import { addBuilding, createState, mineCenter, spawnUnit } from './state';
-import { occupyRect, parseMap } from './map';
+import { occupyRect, orientationOf, parseMap } from './map';
 import { applyCommand } from './commands';
 import { economyTick } from './economy';
 import { constructionTick } from './building';
@@ -37,9 +37,13 @@ export function createGame(cfg: GameConfig): GameState {
     const start = map.starts[player];
     const hq = addBuilding(state, player, 'hq', start.x - 1, start.y - 1, true);
     occupyRect(state.map, hq.id, hq.tileX, hq.tileY, hq.w, hq.h);
-    const mine = nearestMine(state, start.x, start.y);
+    // 기준점은 타일 중심(+0.5) — 타일 코너 기준이면 미러 진영과 (1,1) 어긋남 (#44)
+    const cx = start.x + 0.5;
+    const cy = start.y + 0.5;
+    const mine = nearestMine(state, cx, cy);
+    const sign = orientationOf(map, player); // 미러 진영은 반대 방향 스폰 — 채굴거리 대칭 (#44)
     for (let i = 0; i < ECON.startWorkers; i++) {
-      const u = spawnUnit(state, player, 'worker', start.x + 2 + i * 0.6, start.y + 2.5);
+      const u = spawnUnit(state, player, 'worker', cx + sign * (1.5 + i * 0.6), cy + sign * 2);
       if (mine) {
         u.harvestTargetId = mine.id;
         u.state = 'harvesting';
