@@ -1,0 +1,16 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><title>모션 미리보기</title>
+<style>
+ body{background:#0c0e14;color:#e8e2d0;font-family:sans-serif;text-align:center;padding:40px}
+ h1{color:#f5c542}
+ .anim{width:256px;height:320px;display:inline-block;background-repeat:no-repeat;background-size:1024px 320px;border:1px solid #2c3140;border-radius:12px;margin:12px}
+ .a1{background-image:url(walk-sheet-s11.png);animation:walk1 .6s steps(4) infinite}
+ .a2{background-image:url(walk-sheet-s42.png);animation:walk1 .6s steps(4) infinite}
+ .fast{animation-duration:.4s}
+ @keyframes walk1{from{background-position:0 0}to{background-position:-1024px 0}}
+ p{color:#9aa0ae}
+</style></head><body>
+<h1>🏃 진짜 프레임 모션 미리보기 (AI 생성 4프레임 걷기 사이클)</h1>
+<p>변형 트윈이 아니라 프레임이 실제로 바뀌는 애니메이션입니다 — 시드 2종 × 보통/빠름</p>
+<div class="anim a1"></div><div class="anim a1 fast"></div>
+<div class="anim a2"></div><div class="anim a2 fast"></div>
+</body></html>

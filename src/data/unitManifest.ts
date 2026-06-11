@@ -4,7 +4,7 @@
 
 import type { FactionId } from '../core/types';
 
-export const UNIT_IMAGE_FACTIONS: FactionId[] = ['psion'];
+export const UNIT_IMAGE_FACTIONS: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'celestial'];
 
 export function hasUnitImages(faction: FactionId): boolean {
   return UNIT_IMAGE_FACTIONS.includes(faction);

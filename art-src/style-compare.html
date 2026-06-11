@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>육계대전 — 아트 스타일 시안 비교</title>
+<style>
+  body { background: #0c0e14; color: #e8e2d0; font-family: 'Pretendard', -apple-system, sans-serif; margin: 0; padding: 32px; }
+  h1 { color: #f5c542; } h2 { margin: 8px 0 4px; }
+  .style { background: #141823; border: 2px solid #2c3140; border-radius: 14px; padding: 20px 24px; margin-bottom: 28px; }
+  .desc { color: #9aa0ae; margin: 0 0 14px; font-size: 14px; }
+  .row { display: flex; gap: 14px; }
+  .cell { flex: 1; text-align: center; }
+  .cell img { width: 100%; max-width: 380px; border-radius: 10px; border: 1px solid #2c3140; image-rendering: auto; }
+  .pixel img { image-rendering: pixelated; }
+  .cap { font-size: 13px; color: #9aa0ae; margin-top: 6px; }
+  .badge { display: inline-block; background: #2a2410; color: #f5c542; border: 1px solid #f5c542; border-radius: 6px; padding: 2px 10px; font-size: 12px; margin-left: 10px; }
+</style>
+</head>
+<body>
+<h1>🎨 육계대전 아트 스타일 시안 (로컬 Z-Image-Turbo 생성)</h1>
+<p class="desc">같은 소재 3종(본진 건물 / 지형 / 무림 검사 유닛)을 스타일별로 생성했습니다. 마음에 드는 스타일 알파벳을 알려주세요. 선택한 스타일로 전체 에셋(~100장)을 일괄 생성·교체합니다.</p>
+
+<div class="style">
+  <h2>A. 손그림 카툰 <span class="badge">워크3풍 · 추천</span></h2>
+  <p class="desc">두꺼운 외곽선 + 유화풍 음영 + 따뜻한 채도 — 워크래프트 느낌에 가장 근접</p>
+  <div class="row">
+    <div class="cell"><img src="samples/a-building.png"><div class="cap">본진 성채</div></div>
+    <div class="cell"><img src="samples/a-terrain.png"><div class="cap">지형</div></div>
+    <div class="cell"><img src="samples/a-unit.png"><div class="cap">무림 검사</div></div>
+  </div>
+</div>
+
+<div class="style">
+  <h2>B. 고급 플랫 카툰 <span class="badge">클래시로얄풍</span></h2>
+  <p class="desc">깔끔한 벡터 셰이프 + 셀 셰이딩 — 모바일 게임 같은 깔끔함, 일관성 최상</p>
+  <div class="row">
+    <div class="cell"><img src="samples/b-building.png"><div class="cap">본진 성채</div></div>
+    <div class="cell"><img src="samples/b-terrain.png"><div class="cap">지형</div></div>
+    <div class="cell"><img src="samples/b-unit.png"><div class="cap">무림 검사</div></div>
+  </div>
+</div>
+
+<div class="style pixel">
+  <h2>C. 픽셀아트 <span class="badge">레트로 워크2풍</span></h2>
+  <p class="desc">16비트 RTS 스프라이트 — 워크2 원작의 향수, 타일 게임과 궁합 최고</p>
+  <div class="row">
+    <div class="cell"><img src="samples/c-building.png"><div class="cap">본진 성채</div></div>
+    <div class="cell"><img src="samples/c-terrain.png"><div class="cap">지형</div></div>
+    <div class="cell"><img src="samples/c-unit.png"><div class="cap">무림 검사</div></div>
+  </div>
+</div>
+
+<div class="style">
+  <h2>D. 동양 수묵채색 <span class="badge">육계대전 고유 방향</span></h2>
+  <p class="desc">수묵 붓터치 + 담채 — 무림/요괴/천계 세계관과 어울리는 차별화 노선</p>
+  <div class="row">
+    <div class="cell"><img src="samples/d-building.png"><div class="cap">본진 누각</div></div>
+    <div class="cell"><img src="samples/d-terrain.png"><div class="cap">지형</div></div>
+    <div class="cell"><img src="samples/d-unit.png"><div class="cap">무림 검사</div></div>
+  </div>
+</div>
+
+</body>
+</html>
