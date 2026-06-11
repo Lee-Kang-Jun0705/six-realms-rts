@@ -3,7 +3,7 @@
 
 import type { FactionId } from '../core/types';
 
-export const BUILDING_IMAGE_FACTIONS: FactionId[] = [];
+export const BUILDING_IMAGE_FACTIONS: FactionId[] = ['psion', 'murim', 'fantasy', 'yokai', 'demon', 'celestial'];
 
 export function hasBuildingImages(faction: FactionId): boolean {
   return BUILDING_IMAGE_FACTIONS.includes(faction);
