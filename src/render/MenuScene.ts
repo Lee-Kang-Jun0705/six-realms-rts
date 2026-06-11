@@ -20,11 +20,20 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     this.add
-      .text(width / 2, height * 0.22, '육계대전', { fontSize: '64px', color: '#f5c542', fontStyle: 'bold' })
-      .setOrigin(0.5);
+      .text(width / 2, height * 0.18, '육계대전', {
+        fontSize: '68px', color: '#f5c542', fontStyle: 'bold',
+        stroke: '#1a0d12', strokeThickness: 8,
+        shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 10, fill: true },
+      })
+      .setOrigin(0.5)
+      .setDepth(30);
     this.add
-      .text(width / 2, height * 0.32, 'SIX REALMS RTS — 여섯 세계의 패권 전쟁', { fontSize: '18px', color: '#9aa0ae' })
-      .setOrigin(0.5);
+      .text(width / 2, height * 0.27, 'SIX REALMS RTS — 여섯 세계의 패권 전쟁', {
+        fontSize: '18px', color: '#e8e2d0',
+        shadow: { offsetX: 0, offsetY: 2, color: '#000', blur: 6, fill: true },
+      })
+      .setOrigin(0.5)
+      .setDepth(30);
     this.buildMenu();
     this.events.on('shutdown', () => this.menuEl?.remove());
   }
@@ -33,20 +42,30 @@ export class MenuScene extends Phaser.Scene {
     const el = document.createElement('div');
     this.menuEl = el;
     el.innerHTML = `<style>
-      .menu-wrap { position: fixed; top: 42%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column;
+      .menu-bg { position: fixed; inset: 0; background: url(ui/menu-bg.jpg) center/cover no-repeat; z-index: 5; }
+      .menu-bg::after { content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(12,14,20,0.55) 0%, rgba(12,14,20,0.35) 40%, rgba(12,14,20,0.82) 100%); }
+      .menu-wrap { position: fixed; top: 38%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column;
         gap: 14px; align-items: center; font-family: 'Pretendard', -apple-system, sans-serif; z-index: 20; }
       .menu-factions { display: flex; gap: 8px; }
-      .menu-f { padding: 10px 16px; border-radius: 10px; border: 2px solid #2c3140; background: #1a1e29; color: #e8e2d0;
-        cursor: pointer; font-weight: 700; font-size: 15px; }
-      .menu-f.on { border-color: #f5c542; background: #2a2410; }
+      .menu-f { padding: 10px 16px; border-radius: 10px; border: 2px solid #2c3140; background: rgba(26,30,41,0.85); color: #e8e2d0;
+        cursor: pointer; font-weight: 700; font-size: 14px; }
+      .menu-f.on { border-color: #f5c542; background: rgba(42,36,16,0.9); }
+      .menu-fac { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; padding: 6px;
+        border-radius: 12px; border: 2px solid #2c3140; background: rgba(20,24,33,0.82); cursor: pointer; }
+      .menu-fac img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: rgba(0,0,0,0.3); }
+      .menu-fac span { font-size: 13px; font-weight: 700; color: #e8e2d0; }
+      .menu-fac.on { border-color: #f5c542; box-shadow: 0 0 14px rgba(245,197,66,0.5); transform: translateY(-3px); }
+      .menu-fac:hover { border-color: #4a5468; }
       .menu-start { padding: 14px 42px; border-radius: 12px; border: 2px solid #4a5468; background: #2f6bd8; color: #fff;
-        cursor: pointer; font-weight: 800; font-size: 18px; }
+        cursor: pointer; font-weight: 800; font-size: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
       .menu-start:hover { background: #3d7ae8; }
-      .menu-start.spec { background: #1a1e29; font-size: 15px; padding: 10px 28px; }
-      .menu-hint { color: #9aa0ae; font-size: 13px; }
+      .menu-start.spec, .menu-start.defense { background: rgba(26,30,41,0.9); font-size: 15px; padding: 10px 28px; }
+      .menu-hint { color: #c3c8cf; font-size: 13px; text-shadow: 0 1px 3px #000; }
     </style>
+    <div class="menu-bg"></div>
     <div class="menu-wrap">
-      <div class="menu-factions"></div>
+      <div class="menu-factions menu-facrow"></div>
       <div class="menu-factions menu-maps"></div>
       <div class="menu-factions menu-diffs"></div>
       <button class="menu-start">스커미시 시작 (vs AI)</button>
@@ -55,14 +74,19 @@ export class MenuScene extends Phaser.Scene {
       <div class="menu-hint">조작: 드래그 선택 · 우클릭 명령 · A 어택땅 · Ctrl+1~9 부대지정 · WASD/엣지 스크롤 · 휠 줌 · P 일시정지 · M 음소거</div>
     </div>`;
     document.body.appendChild(el);
-    const fwrap = el.querySelector('.menu-factions:not(.menu-maps)')!;
+    const fwrap = el.querySelector('.menu-facrow')!;
     for (const f of PLAYABLE) {
       const btn = document.createElement('button');
-      btn.className = 'menu-f' + (f === this.picked ? ' on' : '');
-      btn.textContent = FACTION_PALETTES[f].name;
+      btn.className = 'menu-fac' + (f === this.picked ? ' on' : '');
+      const img = document.createElement('img');
+      img.src = `ui/portrait-${f}.png`;
+      img.alt = FACTION_PALETTES[f].name;
+      const label = document.createElement('span');
+      label.textContent = FACTION_PALETTES[f].name;
+      btn.append(img, label);
       btn.onclick = () => {
         this.picked = f;
-        fwrap.querySelectorAll('.menu-f').forEach((b) => b.classList.remove('on'));
+        fwrap.querySelectorAll('.menu-fac').forEach((b) => b.classList.remove('on'));
         btn.classList.add('on');
       };
       fwrap.appendChild(btn);
