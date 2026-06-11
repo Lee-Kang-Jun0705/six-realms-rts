@@ -5,6 +5,7 @@ import Phaser from 'phaser';
 import type { BuildingKind, FactionId, UnitRole } from '../core/types';
 import { BUILDING_STATS } from '../data/baseline';
 import { hasUnitImages } from '../data/unitManifest';
+import { hasBuildingImages } from '../data/buildingManifest';
 import { MOTION_FRAMES, UNIT_CANVAS, drawUnitFrame, type Motion } from './artUnits';
 import { buildingCanvasSize, drawBuilding, drawConstructionSite, drawGoldMine } from './artBuildings';
 import { drawDirt, drawForestTile, drawGrass, drawRock, drawWater } from './artTiles';
@@ -36,6 +37,19 @@ export function preloadUnitImages(scene: Phaser.Scene, faction: FactionId): void
 
 export function buildingKey(faction: FactionId, kind: BuildingKind, tier: number): string {
   return kind === 'hq' ? `b-${faction}-hq-t${tier}` : `b-${faction}-${kind}`;
+}
+
+/** AI 생성 건물 이미지 키 (있으면 절차 드로잉보다 우선, 티어 무관 1장) */
+export function buildingImageKey(faction: FactionId, kind: BuildingKind): string {
+  return `bimg-${faction}-${kind}`;
+}
+
+/** 보유 종족만 건물 이미지 preload */
+export function preloadBuildingImages(scene: Phaser.Scene, faction: FactionId): void {
+  if (!hasBuildingImages(faction)) return;
+  for (const kind of KINDS) {
+    scene.load.image(buildingImageKey(faction, kind), `buildings/${faction}-${kind}.png`);
+  }
 }
 
 /** 매치에 등장하는 종족만 베이크 (lazy) */

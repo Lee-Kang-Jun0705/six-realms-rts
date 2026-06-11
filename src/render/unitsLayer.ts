@@ -5,7 +5,7 @@ import type { GameState } from '../core/state';
 import type { Unit } from '../core/types';
 import type { SimRunner } from './SimRunner';
 import { MOTION_FRAMES, type Motion } from './artUnits';
-import { buildingKey, unitImageKey, unitKey } from './bake';
+import { buildingImageKey, buildingKey, unitImageKey, unitKey } from './bake';
 import { BUILDING_PAD } from './artBuildings';
 import { COL, teamColor } from './palette';
 import { TILE } from '../core/const';
@@ -129,23 +129,46 @@ export class UnitsLayer {
     this.scene.tweens.add({ targets: sprite, alpha: 0, delay: 500, duration: 600, onComplete: () => sprite.destroy() });
   }
 
+  private buildingImg(b: { faction: Unit['faction']; kind: import('../core/types').BuildingKind }): boolean {
+    return this.scene.textures.exists(buildingImageKey(b.faction, b.kind));
+  }
+
+  private wantBuildingKey(b: { faction: Unit['faction']; kind: import('../core/types').BuildingKind; tier: number; buildProgress: number; w: number; h: number }): string {
+    if (b.buildProgress < 1) return `site-${b.w}x${b.h}`;
+    return this.buildingImg(b) ? buildingImageKey(b.faction, b.kind) : buildingKey(b.faction, b.kind, b.tier);
+  }
+
+  private placeBuildingSprite(sprite: Phaser.GameObjects.Image, b: { tileX: number; tileY: number; w: number; h: number; buildProgress: number; faction: Unit['faction']; kind: import('../core/types').BuildingKind }): void {
+    if (b.buildProgress >= 1 && this.buildingImg(b)) {
+      // AI 이미지: 풋프린트 하단 중앙 기준, 폭=풋프린트×1.25(탑뷰 입체 여유)
+      sprite.setOrigin(0.5, 0.88);
+      const w = b.w * TILE * 1.25;
+      sprite.setDisplaySize(w, w);
+      sprite.setPosition((b.tileX + b.w / 2) * TILE, (b.tileY + b.h) * TILE + 4);
+    } else {
+      // 절차 텍스처: 기존 좌상단 + PAD 오프셋
+      sprite.setOrigin(0, 0);
+      sprite.setScale(1);
+      sprite.setPosition(b.tileX * TILE - BUILDING_PAD, b.tileY * TILE - BUILDING_PAD - 10);
+    }
+  }
+
   private syncBuildings(): void {
     const seen = new Set<number>();
     for (const b of this.state.buildings) {
       if (b.hp <= 0) continue;
       seen.add(b.id);
       let v = this.buildingViews.get(b.id);
-      const wantKey = b.buildProgress < 1 ? `site-${b.w}x${b.h}` : buildingKey(b.faction, b.kind, b.tier);
+      const wantKey = this.wantBuildingKey(b);
       if (!v) {
-        const sprite = this.scene.add
-          .image(b.tileX * TILE - BUILDING_PAD, b.tileY * TILE - BUILDING_PAD - 10, wantKey)
-          .setOrigin(0, 0)
-          .setDepth((b.tileY + b.h) * TILE);
+        const sprite = this.scene.add.image(0, 0, wantKey).setDepth((b.tileY + b.h) * TILE);
+        this.placeBuildingSprite(sprite, b);
         v = { sprite, progress: b.buildProgress, tier: b.tier };
         this.buildingViews.set(b.id, v);
       }
       if ((v.progress < 1 && b.buildProgress >= 1) || v.tier !== b.tier) {
         v.sprite.setTexture(wantKey);
+        this.placeBuildingSprite(v.sprite, b);
         v.progress = b.buildProgress;
         v.tier = b.tier;
       }
@@ -196,16 +219,17 @@ export class UnitsLayer {
         g.strokeEllipse(x, y + 4, 28, 13);
       }
       if (u.hp < u.maxHp || this.selection.has(u.id)) {
-        const w = 24;
+        const w = 28;
+        const barY = y - 46; // 유닛 머리(이미지 40px, 발밑 기준 ≈ y-35) 위로 확실히
         const ratio = Math.max(0, u.hp / u.maxHp);
-        g.fillStyle(COL.outline, 0.8);
-        g.fillRect(x - w / 2 - 1, y - 38, w + 2, 5);
-        g.fillStyle(ratio > 0.4 ? COL.hpGreen : COL.hpRed, 1);
-        g.fillRect(x - w / 2, y - 37, w * ratio, 3);
+        g.fillStyle(0x000000, 0.85);
+        g.fillRect(x - w / 2 - 1, barY - 1, w + 2, 6);
+        g.fillStyle(ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? 0xf5c542 : COL.hpRed, 1);
+        g.fillRect(x - w / 2, barY, w * ratio, 4);
         if (u.shield > 0) {
           const cap = Math.max(1, Math.floor(u.maxHp * 0.15));
           g.fillStyle(0x35f0e0, 1);
-          g.fillRect(x - w / 2, y - 40, w * Math.min(1, u.shield / cap), 2);
+          g.fillRect(x - w / 2, barY - 3, w * Math.min(1, u.shield / cap), 2);
         }
       }
     }
