@@ -8,6 +8,10 @@ import { BUILDING_STATS, TIER_UP, UNIT_STATS, UPGRADES } from '../data/baseline'
 import { spellsOf } from '../data/spells';
 import { findBuilding } from '../core/state';
 import { SUPPLY_CAP } from '../core/const';
+import { COL } from '../render/palette';
+
+/** 팀 인덱스 → HTML 색 (palette COL.team SSOT) */
+const teamHex = (t: number): string => '#' + COL.team[t % COL.team.length].toString(16).padStart(6, '0');
 
 const ROLE_KO: Record<UnitRole, string> = {
   worker: '일꾼', melee: '근접병', ranged: '사수', cavalry: '기동대', siege: '공성기', caster: '술사', elite: '정예',
@@ -65,8 +69,8 @@ export class Hud {
       const parts = this.state.players.map((p, i) => {
         const army = this.state.units.filter((u) => u.player === i && u.role !== 'worker').length;
         const workers = this.state.units.filter((u) => u.player === i && u.role === 'worker').length;
-        const color = i === 0 ? '#3aa0ff' : '#ff5a52';
-        return `<span style="color:${color};font-weight:800">[${i === 0 ? '청' : '적'}]</span> ⛏${p.gold} 🌲${p.wood} 👷${workers} ⚔${army}`;
+        const t = this.state.teams[i];
+        return `<span style="color:${teamHex(t)};font-weight:800">[T${t + 1}]</span> ⛏${p.gold} 🌲${p.wood} 👷${workers} ⚔${army}`;
       });
       const mins = Math.floor(this.state.tick / 20 / 60);
       const secs = Math.floor((this.state.tick / 20) % 60);

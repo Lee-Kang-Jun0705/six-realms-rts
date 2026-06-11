@@ -225,7 +225,7 @@ export class UnitsLayer {
       const x = this.runner.lerpX(u.id, u.x, alpha) * TILE;
       const y = this.runner.lerpY(u.id, u.y, alpha) * TILE;
       // 발밑 팀 컬러 링 (아군/적 구분 — 같은 종족 그림이라 색링으로 식별)
-      const tc = teamColor(u.player);
+      const tc = teamColor(u.player, this.state.teams);
       g.fillStyle(tc, 0.28);
       g.fillEllipse(x, y + 4, 22, 9);
       g.lineStyle(2, tc, 0.9);
@@ -281,7 +281,7 @@ export class UnitsLayer {
         g.fillStyle(b.buildProgress < 1 ? 0xf2c14e : ratio > 0.4 ? COL.hpGreen : COL.hpRed, 1);
         g.fillRect(cx - w / 2, topY + 1, w * Math.max(0, ratio), 4);
       }
-      g.fillStyle(teamColor(b.player), 1);
+      g.fillStyle(teamColor(b.player, this.state.teams), 1);
       g.fillCircle(b.tileX * TILE + 6, b.tileY * TILE + 6, 3);
     }
   }

@@ -11,6 +11,7 @@ export class MenuScene extends Phaser.Scene {
   private picked: FactionId = 'psion';
   private pickedMap = ''; // '' = 랜덤
   private pickedDiff: 'easy' | 'normal' | 'hard' = 'normal';
+  private pickedSize: 2 | 6 = 2; // 2=1v1, 6=3v3
   private menuEl: HTMLDivElement | null = null;
 
   constructor() {
@@ -68,6 +69,7 @@ export class MenuScene extends Phaser.Scene {
       <div class="menu-factions menu-facrow"></div>
       <div class="menu-factions menu-maps"></div>
       <div class="menu-factions menu-diffs"></div>
+      <div class="menu-factions menu-sizes"></div>
       <button class="menu-start">스커미시 시작 (vs AI)</button>
       <button class="menu-start spec">AI 관전 모드 (자동 대전)</button>
       <button class="menu-start defense">디펜스 모드 (웨이브 생존)</button>
@@ -128,9 +130,41 @@ export class MenuScene extends Phaser.Scene {
       };
       dwrap.appendChild(btn);
     }
+    // 팀 규모 토글 (1v1 / 3v3)
+    const swrap = el.querySelector('.menu-sizes')!;
+    const sizes: { v: 2 | 6; ko: string }[] = [
+      { v: 2, ko: '⚔️ 1 vs 1' },
+      { v: 6, ko: '👥 3 vs 3' },
+    ];
+    for (const s of sizes) {
+      const btn = document.createElement('button');
+      btn.className = 'menu-f' + (s.v === this.pickedSize ? ' on' : '');
+      btn.textContent = s.ko;
+      btn.onclick = () => {
+        this.pickedSize = s.v;
+        swrap.querySelectorAll('.menu-f').forEach((b) => b.classList.remove('on'));
+        btn.classList.add('on');
+      };
+      swrap.appendChild(btn);
+    }
     const launch = (mode: 'play' | 'spectate' | 'defense'): void => {
       el.remove();
       const seed = (Date.now() % 100000) | 0;
+      // 3v3: 내 종족 + 나머지 5종족(팀0=내팀 3, 팀1=적 3). 디펜스는 1v1 고정
+      if (this.pickedSize === 6 && mode !== 'defense') {
+        const rest = PLAYABLE.filter((f) => f !== this.picked);
+        const rot = seed % rest.length;
+        const ordered = [...rest.slice(rot), ...rest.slice(0, rot)];
+        this.scene.start('game', {
+          factions: [this.picked, ...ordered], // 6종족
+          teams: [0, 0, 0, 1, 1, 1],
+          seed,
+          mapId: 'trinity-fields',
+          mode,
+          difficulty: this.pickedDiff,
+        });
+        return;
+      }
       this.scene.start('game', {
         factions: [this.picked, enemyOf(this.picked, seed)],
         seed,

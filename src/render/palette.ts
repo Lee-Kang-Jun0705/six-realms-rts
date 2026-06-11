@@ -43,9 +43,11 @@ export const COL = {
   hpGreen: 0x4cd964,
   hpRed: 0xd9534f,
   shadow: 0x000000,
-  team: [0x3aa0ff, 0xff5a52] as const, // P1 파랑 / P2 빨강
+  team: [0x3aa0ff, 0xff5a52, 0x4cd964, 0xf5c542, 0xb18aff, 0xff9d4d] as const, // 파랑/빨강/초록/노랑/보라/주황
 };
 
-export function teamColor(player: number): number {
-  return COL.team[player === 0 ? 0 : 1];
+/** 팀 색 — teams 매핑 있으면 팀 인덱스 색(3v3 아군 동색), 없으면 player 색(1v1 호환) */
+export function teamColor(player: number, teams?: number[]): number {
+  const idx = teams ? (teams[player] ?? player) : player;
+  return COL.team[idx % COL.team.length];
 }

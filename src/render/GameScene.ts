@@ -15,12 +15,14 @@ import { CameraControls } from './cameraControls';
 import { InputController } from './input';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
-import { MAPS, mapById } from '../data/maps';
+import { MAPS, MAPS_3V3, mapById } from '../data/maps';
 import { TILE } from '../core/const';
 import { FACTION_PALETTES } from './palette';
+import type { TeamId } from '../core/types';
 
 export interface GameSceneConfig {
-  factions: [FactionId, FactionId];
+  factions: FactionId[]; // 1v1=2, 3v3=6
+  teams?: TeamId[]; // 플레이어→팀 (3v3=[0,0,0,1,1,1]). 미지정=각자 팀
   seed: number;
   mapId?: string;
   mode: 'play' | 'spectate' | 'defense';
@@ -65,25 +67,27 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     const cfg = this.cfg;
     bakeCommon(this);
-    bakeFaction(this, cfg.factions[0]);
-    if (cfg.factions[1] !== cfg.factions[0]) bakeFaction(this, cfg.factions[1]);
+    for (const f of new Set(cfg.factions)) bakeFaction(this, f);
 
-    const mapDef = cfg.mapId ? mapById(cfg.mapId) : MAPS[cfg.seed % MAPS.length];
+    const mapDef = cfg.mapId
+      ? mapById(cfg.mapId)
+      : cfg.factions.length > 2
+        ? MAPS_3V3[cfg.seed % MAPS_3V3.length]
+        : MAPS[cfg.seed % MAPS.length];
     const state = createGame({
       mapAscii: mapDef.ascii,
       seed: cfg.seed,
       factions: cfg.factions,
+      teams: cfg.teams,
       defense: cfg.mode === 'defense',
     });
     this.runner = new SimRunner(state);
-    // AI 연결: 대전 = P1만 / 관전 = 양측 / 디펜스 = AI 없음 (웨이브 디렉터가 적 제어)
+    // AI 연결: 대전 = P0(사람) 제외 전부 / 관전 = 전원 / 디펜스 = AI 없음 (웨이브 디렉터가 적 제어)
     const diff = cfg.difficulty ?? 'normal';
-    this.runner.ais =
-      cfg.mode === 'spectate'
-        ? [new AiController({ player: 0, difficulty: diff }), new AiController({ player: 1, difficulty: diff })]
-        : cfg.mode === 'play'
-          ? [new AiController({ player: 1, difficulty: diff })]
-          : [];
+    const ais: AiController[] = [];
+    if (cfg.mode === 'spectate') for (let p = 0; p < state.players.length; p++) ais.push(new AiController({ player: p, difficulty: diff }));
+    else if (cfg.mode === 'play') for (let p = 1; p < state.players.length; p++) ais.push(new AiController({ player: p, difficulty: diff }));
+    this.runner.ais = ais;
     this.terrain = new TerrainLayer(this, state);
     this.units = new UnitsLayer(this, state, this.runner);
     this.projectiles = new ProjectileLayer(this, state);
