@@ -28,20 +28,26 @@ export type StreamName = 'combat' | 'spawn' | 'ai-delay' | 'map' | 'art';
 
 /** 루트 시드에서 이름별 독립 스트림 생성 — 시스템 간 난수 간섭 차단 */
 export class RngStreams {
-  private streams = new Map<StreamName, Rng>();
+  private streams = new Map<string, Rng>();
   constructor(private rootSeed: number) {}
 
   get(name: StreamName): Rng {
-    let rng = this.streams.get(name);
+    return this.getKey(name);
+  }
+
+  /** sub=0이면 공유 스트림, sub>0이면 플레이어별 독립 스트림 (미러전 P0/P1 대칭 보장) */
+  private getKey(key: string): Rng {
+    let rng = this.streams.get(key);
     if (!rng) {
-      rng = mulberry32((this.rootSeed ^ hashString(name)) >>> 0);
-      this.streams.set(name, rng);
+      rng = mulberry32((this.rootSeed ^ hashString(key)) >>> 0);
+      this.streams.set(key, rng);
     }
     return rng;
   }
 
-  /** 정수 [min, max] 균등 추출 */
-  int(name: StreamName, min: number, max: number): number {
-    return min + Math.floor(this.get(name)() * (max - min + 1));
+  /** 정수 [min, max] 균등 추출. sub>0 = 플레이어별 독립 스트림 (예: AI 빌드오더/반응지연) */
+  int(name: StreamName, min: number, max: number, sub = 0): number {
+    const rng = sub === 0 ? this.getKey(name) : this.getKey(`${name}#${sub}`);
+    return min + Math.floor(rng() * (max - min + 1));
   }
 }

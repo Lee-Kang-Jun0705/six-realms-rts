@@ -76,7 +76,7 @@ export class AiController {
       (intel.enemySeenBarracks >= 2 && state.tick < 4000) || (intel.threatNearBase > 150 && state.tick < 5000);
     if (rushSignal && !this.rushDetected) {
       this.rushDetected = true;
-      const delay = state.streams.int('ai-delay', this.diff.reactionMin, this.diff.reactionMax) * 4;
+      const delay = state.streams.int('ai-delay', this.diff.reactionMin, this.diff.reactionMax, this.player + 1) * 4;
       this.reactAt = state.tick + delay;
     }
     if (this.rushDetected && state.tick >= this.reactAt) this.mem.defensive = true;
@@ -92,8 +92,8 @@ export class AiController {
     if (this.boId) {
       this.bo = list.find((b) => b.id === this.boId) ?? list[0];
     } else {
-      // 시드 스트림으로 개막 랜덤 (재현 가능)
-      this.bo = list[state.streams.int('ai-delay', 0, list.length - 1)];
+      // 시드 스트림으로 개막 랜덤 (재현 가능). player별 독립 스트림 = 미러전 P0/P1 대칭 (포지션 편향 차단)
+      this.bo = list[state.streams.int('ai-delay', 0, list.length - 1, this.player + 1)];
     }
     this.mem.workersTarget = this.bo.workersTarget;
   }
