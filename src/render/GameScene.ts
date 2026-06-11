@@ -6,9 +6,10 @@ import { createGame } from '../core/game';
 import { AiController } from '../core/ai/controller';
 import { AudioManager } from './audio';
 import { SimRunner } from './SimRunner';
-import { bakeCommon, bakeFaction } from './bake';
+import { bakeCommon, bakeFaction, preloadUnitImages } from './bake';
 import { TerrainLayer } from './terrainLayer';
 import { UnitsLayer } from './unitsLayer';
+import { ProjectileLayer } from './projectileLayer';
 import { FogLayer } from './fogLayer';
 import { CameraControls } from './cameraControls';
 import { InputController } from './input';
@@ -31,6 +32,7 @@ export class GameScene extends Phaser.Scene {
   private audio!: AudioManager;
   private terrain!: TerrainLayer;
   private units!: UnitsLayer;
+  private projectiles!: ProjectileLayer;
   private fog!: FogLayer;
   private cam!: CameraControls;
   private inputCtl!: InputController;
@@ -50,6 +52,9 @@ export class GameScene extends Phaser.Scene {
 
   preload(): void {
     AudioManager.preload(this);
+    // AI 정적 유닛 이미지 (있는 종족만 — 없으면 onerror로 절차 드로잉 폴백)
+    this.load.on('loaderror', () => {}); // 누락 이미지 무시
+    for (const f of new Set(this.cfg.factions)) preloadUnitImages(this, f);
   }
 
   create(): void {
@@ -76,6 +81,7 @@ export class GameScene extends Phaser.Scene {
           : [];
     this.terrain = new TerrainLayer(this, state);
     this.units = new UnitsLayer(this, state, this.runner);
+    this.projectiles = new ProjectileLayer(this, state);
     this.fog = new FogLayer(this, state, 0);
     this.fog.revealAll = cfg.mode === 'spectate';
     this.units.isTileVisible = (tx, ty) => this.fog.isTileVisible(tx, ty);
@@ -161,6 +167,7 @@ export class GameScene extends Phaser.Scene {
     const alpha = this.runner.advance(delta);
     this.terrain.update(delta);
     this.units.update(delta, alpha);
+    this.projectiles.update(delta);
     this.fog.update(delta);
     this.cam.update(delta);
     this.hud.update(delta);

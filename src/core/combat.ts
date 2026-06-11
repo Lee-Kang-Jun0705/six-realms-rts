@@ -1,7 +1,7 @@
 // 전투 — 타겟 획득(최근접+id tie-break)/추격/윈드업/데미지/스플래시/사망 (플랜 §2)
 
 import type { GameState } from './state';
-import { buildingCenter, findBuilding, findUnit } from './state';
+import { buildingCenter, emitFxEvent, findBuilding, findUnit } from './state';
 import type { Building, Unit } from './types';
 import { ARMOR_PER_LV, BUILDING_STATS, UNIT_STATS, WEAPON_DMG_PER_LV } from '../data/baseline';
 import { destroyBuilding } from './building';
@@ -203,6 +203,12 @@ function dealAttack(state: GameState, u: Unit, targetUnit?: Unit, targetBuilding
   const p = state.players[u.player];
   // 공격 시 은신/둔갑 해제
   u.buffs = u.buffs.filter((b) => b.kind !== 'stealth' && b.kind !== 'disguise');
+  // 발사체 시각 fx (원거리/공성만 — 근접은 투사체 없음)
+  if (stats.range >= 2.5) {
+    const tx = targetUnit ? targetUnit.x : targetBuilding ? buildingCenter(targetBuilding).x : u.x;
+    const ty = targetUnit ? targetUnit.y : targetBuilding ? buildingCenter(targetBuilding).y : u.y;
+    emitFxEvent(state, { kind: u.role === 'siege' ? 'cannon' : 'arrow', x0: u.x, y0: u.y - 0.4, x1: tx, y1: ty - 0.3 });
+  }
   let dmg = stats.damage + (p.upgrades['weapon'] ?? 0) * WEAPON_DMG_PER_LV;
   const bless = buffPower(u, 'blessing');
   if (bless > 0) dmg = Math.floor(dmg * (1 + bless));

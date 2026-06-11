@@ -9,110 +9,109 @@ export interface MapDef {
   ascii: string;
 }
 
+// 대형 맵 (스타크래프트 빅맵급) — 빌더 점대칭이라 절반만 그리면 대칭 보장
+
 /** ① 표준: 본진 초크 + 앞마당 멀티 + 중앙 개활지 (밸런스 기준맵) */
 function twinCanyon(): string {
-  const b = new MapBuilder(52, 36);
-  b.start(7, 7);
-  b.mine(10, 3); // 본진 금광
-  b.mine(17, 13); // 앞마당 멀티
-  // 본진 초크: 가로 능선 (입구 폭 3) + 세로 능선 (입구 폭 3)
-  b.rect(1, 13, 6, 2, '#');
-  b.rect(10, 13, 6, 2, '#');
-  b.rect(14, 1, 2, 7, '#');
-  b.rect(14, 11, 2, 4, '#');
+  const b = new MapBuilder(96, 72);
+  b.start(13, 13);
+  b.mine(18, 6); // 본진 금광
+  b.mine(32, 26); // 앞마당 멀티
+  // 본진 초크: 가로 능선 + 세로 능선 (입구 폭 유지)
+  b.rect(1, 26, 12, 3, '#');
+  b.rect(19, 26, 12, 3, '#');
+  b.rect(27, 1, 3, 14, '#');
+  b.rect(27, 22, 3, 8, '#');
   // 측면 숲 (벌목 우회로 + 요괴 통로)
-  b.blob(4, 19, 3.5, 2.5, 'F');
-  b.blob(22, 4, 4, 2.5, 'F');
+  b.blob(8, 38, 7, 5, 'F');
+  b.blob(42, 8, 7, 5, 'F');
   // 중앙 숲섬 (시야 차단)
-  b.blob(26, 18, 4, 2.5, 'F');
+  b.blob(48, 36, 7, 5, 'F');
   b.mirror();
   return b.build();
 }
 
 /** ② 단거리 러시: 짧은 개활지 — 공격적 메타 */
 function bloodPlain(): string {
-  const b = new MapBuilder(44, 30);
-  b.start(8, 15);
-  b.mine(10, 10);
-  // 모서리 숲만 (몸 숨길 곳 최소)
-  b.blob(7, 4, 4, 2.5, 'F');
-  b.blob(20, 25, 3, 2, 'F');
-  // 중앙 바위 소도 2개 (미세한 어그로 분리)
-  b.blob(17, 11, 1.5, 1.2, '#');
+  const b = new MapBuilder(84, 58);
+  b.start(14, 29);
+  b.mine(19, 19);
+  b.blob(13, 8, 7, 5, 'F');
+  b.blob(38, 48, 6, 4, 'F');
+  b.blob(32, 21, 3, 2, '#');
   b.mirror();
   return b.build();
 }
 
 /** ③ 우회로 다중: 3갈래 회랑 + 벌목 샛길 — 견제/매복 극대화 */
 function mazeCorridor(): string {
-  const b = new MapBuilder(52, 36);
-  b.start(7, 18);
-  b.mine(4, 12);
-  b.mine(24, 5); // 윗길 멀티 (쟁탈)
-  // 가로 회랑 벽 2겹 (위/아래는 mirror가 만듦)
-  b.rect(10, 11, 14, 2, '#');
-  b.rect(30, 11, 14, 2, '#'); // 중앙 갭 x24~29
-  b.rect(16, 22, 20, 2, '#'); // 아래 벽 (mirror로 위쪽 대응 생성)
-  // 벌목 샛길 (숲을 뚫으면 새 경로 = 동적 지형 수싸움)
-  b.rect(24, 11, 6, 2, 'F');
-  b.blob(12, 27, 4, 2.5, 'F');
+  const b = new MapBuilder(96, 72);
+  b.start(13, 36);
+  b.mine(8, 24);
+  b.mine(46, 10); // 윗길 멀티 (쟁탈)
+  // 가로 회랑 벽 2겹 (중앙 갭)
+  b.rect(18, 22, 26, 3, '#');
+  b.rect(56, 22, 26, 3, '#');
+  b.rect(30, 44, 38, 3, '#');
+  // 벌목 샛길 (숲 뚫으면 새 경로 = 동적 지형)
+  b.rect(44, 22, 12, 3, 'F');
+  b.blob(22, 52, 7, 5, 'F');
   b.mirror();
   return b.build();
 }
 
 /** ④ 중앙 쟁탈: 고수익 중앙 금광 + 분지 입구 2개 */
 function goldenBasin(): string {
-  const b = new MapBuilder(48, 34);
-  b.start(7, 7);
-  b.mine(10, 3);
-  // 중앙 분지: 바위 링 (입구 상/하 — mirror로 대칭)
-  b.blob(24, 17, 9, 6, '#');
-  b.blob(24, 17, 6.5, 4, '.'); // 내부 파내기
-  b.rect(23, 11, 3, 2, '.'); // 북 입구 (mirror가 남 입구)
-  // 중앙 금광 쌍 (분지 내부)
-  b.mine(21, 15);
+  const b = new MapBuilder(92, 68);
+  b.start(13, 13);
+  b.mine(18, 6);
+  // 중앙 분지: 바위 링 (입구 상/하)
+  b.blob(46, 34, 17, 12, '#');
+  b.blob(46, 34, 12, 8, '.'); // 내부 파내기
+  b.rect(44, 22, 4, 4, '.'); // 북 입구 (mirror가 남 입구)
+  b.mine(40, 30); // 중앙 금광 쌍
   // 외곽 숲
-  b.blob(6, 25, 4, 3, 'F');
-  b.blob(38, 6, 4, 3, 'F');
+  b.blob(12, 48, 7, 5, 'F');
+  b.blob(72, 12, 7, 5, 'F');
   b.mirror();
   return b.build();
 }
 
 /** ⑤ 장거리 운영: 대각 최장 러시거리 + 멀티 다수 + 중앙 십자 차단 */
 function fourFortress(): string {
-  const b = new MapBuilder(56, 40);
-  b.start(8, 8);
-  b.mine(11, 4); // 본진
-  b.mine(5, 17); // 앞마당
-  b.mine(26, 8); // 제3 멀티 (쟁탈)
+  const b = new MapBuilder(112, 88);
+  b.start(15, 15);
+  b.mine(21, 7); // 본진
+  b.mine(9, 32); // 앞마당
+  b.mine(48, 15); // 제3 멀티 (쟁탈)
   // 중앙 십자 바위 (직선 러시 차단 → 우회 강제)
-  b.rect(26, 14, 4, 12, '#');
-  b.rect(20, 18, 16, 4, '#');
+  b.rect(53, 28, 6, 32, '#');
+  b.rect(40, 40, 32, 8, '#');
   // 숲 회랑
-  b.blob(18, 13, 3, 2, 'F');
-  b.blob(40, 27, 3, 2, 'F');
-  b.blob(9, 28, 3.5, 2.5, 'F');
+  b.blob(34, 24, 6, 4, 'F');
+  b.blob(76, 52, 6, 4, 'F');
+  b.blob(17, 54, 7, 5, 'F');
   b.mirror();
   return b.build();
 }
 
 /** 디펜스 모드 전용 맵 — 비대칭 PvE (대칭 테스트 대상 아님): 상단 스폰 → 깔때기 → 하단 본진 */
 function defenseValley(): string {
-  const b = new MapBuilder(44, 32);
+  const b = new MapBuilder(72, 56);
   // start() 헬퍼는 점대칭 쌍을 만들므로 미사용 — 마커 직접 배치
-  b.set(22, 26, '1'); // P0 본진 (하단 중앙)
-  b.set(22, 4, '2'); // 웨이브 스폰 앵커 (상단 중앙)
-  // 깔때기 바위 (중앙 통로 폭 6)
-  b.blob(8, 13, 7, 4, '#');
-  b.blob(36, 13, 7, 4, '#');
-  b.blob(13, 20, 5, 3, '#');
-  b.blob(31, 20, 5, 3, '#');
+  b.set(36, 46, '1'); // P0 본진 (하단 중앙)
+  b.set(36, 6, '2'); // 웨이브 스폰 앵커 (상단 중앙)
+  // 깔때기 바위 (중앙 통로)
+  b.blob(13, 22, 11, 7, '#');
+  b.blob(59, 22, 11, 7, '#');
+  b.blob(21, 34, 8, 5, '#');
+  b.blob(51, 34, 8, 5, '#');
   // 본진 금광 2개 + 측면 숲
-  b.set(15, 27, 'G');
-  b.set(27, 27, 'G');
-  b.blob(5, 27, 3.5, 2.5, 'F');
-  b.blob(38, 27, 3.5, 2.5, 'F');
-  b.blob(22, 11, 3, 2, 'F'); // 통로 중앙 숲 (벌목 시 추가 사선)
+  b.set(25, 47, 'G');
+  b.set(45, 47, 'G');
+  b.blob(8, 47, 6, 4, 'F');
+  b.blob(63, 47, 6, 4, 'F');
+  b.blob(36, 19, 5, 3, 'F'); // 통로 중앙 숲 (벌목 시 추가 사선)
   return b.build();
 }
 

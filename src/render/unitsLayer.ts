@@ -5,7 +5,7 @@ import type { GameState } from '../core/state';
 import type { Unit } from '../core/types';
 import type { SimRunner } from './SimRunner';
 import { MOTION_FRAMES, type Motion } from './artUnits';
-import { buildingKey, unitKey } from './bake';
+import { buildingKey, unitImageKey, unitKey } from './bake';
 import { BUILDING_PAD } from './artBuildings';
 import { COL, teamColor } from './palette';
 import { TILE } from '../core/const';
@@ -51,13 +51,21 @@ export class UnitsLayer {
     return 'idle';
   }
 
+  /** AI 정적 이미지가 로드돼 있으면 그 키, 아니면 절차 드로잉 키 */
+  private hasImage(faction: Unit['faction'], role: Unit['role']): boolean {
+    return this.scene.textures.exists(unitImageKey(faction, role));
+  }
+
   private syncUnits(alpha: number): void {
     const seen = new Set<number>();
     for (const u of this.state.units) {
       seen.add(u.id);
+      const useImage = this.hasImage(u.faction, u.role);
       let v = this.views.get(u.id);
       if (!v) {
-        const sprite = this.scene.add.image(0, 0, unitKey(u.faction, u.role, 'idle', 0)).setOrigin(0.5, 0.875);
+        const startKey = useImage ? unitImageKey(u.faction, u.role) : unitKey(u.faction, u.role, 'idle', 0);
+        const sprite = this.scene.add.image(0, 0, startKey).setOrigin(0.5, 0.875);
+        if (useImage) sprite.setDisplaySize(40, 40); // 256px 원본 → 약 1.25타일 표시
         v = { sprite, faction: u.faction, role: u.role, player: u.player, facing: 1, lastX: u.x, lastY: u.y };
         this.views.set(u.id, v);
       }
@@ -68,11 +76,18 @@ export class UnitsLayer {
       v.lastX = x;
       v.lastY = y;
       const motion = this.motionOf(u);
-      const frames = MOTION_FRAMES[motion];
-      const frame = Math.floor(this.animTime / (motion === 'attack' ? 110 : 140)) % frames;
-      v.sprite.setTexture(unitKey(u.faction, u.role, motion, frame));
+      if (useImage) {
+        // 정적 스프라이트 + 살짝의 생동감(공격 시 전진 펀치, 이동 시 미세 bob) — 위치만 흔들고 그림은 고정
+        v.sprite.setTexture(unitImageKey(u.faction, u.role));
+        const bob = motion === 'walk' ? Math.sin(this.animTime / 90 + u.id) * 1.2 : 0;
+        v.sprite.setPosition(x, y + bob).setDepth(y);
+      } else {
+        const frames = MOTION_FRAMES[motion];
+        const frame = Math.floor(this.animTime / (motion === 'attack' ? 110 : 140)) % frames;
+        v.sprite.setTexture(unitKey(u.faction, u.role, motion, frame));
+        v.sprite.setPosition(x, y).setDepth(y);
+      }
       v.sprite.setFlipX(v.facing < 0);
-      v.sprite.setPosition(x, y).setDepth(y);
       const veiled = u.buffs.some((b) => b.kind === 'stealth' || b.kind === 'disguise');
       const isEnemy = u.player !== this.viewPlayer && this.viewPlayer >= 0;
       const hidden =
@@ -92,6 +107,14 @@ export class UnitsLayer {
 
   private playDeath(v: UnitView): void {
     const sprite = v.sprite;
+    // 정적 이미지 유닛은 death 프레임이 없음 → 쓰러짐(회전)+페이드로 연출
+    if (this.hasImage(v.faction, v.role)) {
+      this.scene.tweens.add({
+        targets: sprite, alpha: 0, angle: v.facing < 0 ? -80 : 80, scaleX: sprite.scaleX * 0.9,
+        duration: 600, onComplete: () => sprite.destroy(),
+      });
+      return;
+    }
     let frame = 0;
     sprite.setTexture(unitKey(v.faction, v.role, 'death', 0));
     this.scene.time.addEvent({
@@ -162,9 +185,15 @@ export class UnitsLayer {
     for (const u of this.state.units) {
       const x = this.runner.lerpX(u.id, u.x, alpha) * TILE;
       const y = this.runner.lerpY(u.id, u.y, alpha) * TILE;
+      // 발밑 팀 컬러 링 (아군/적 구분 — 같은 종족 그림이라 색링으로 식별)
+      const tc = teamColor(u.player);
+      g.fillStyle(tc, 0.28);
+      g.fillEllipse(x, y + 4, 22, 9);
+      g.lineStyle(2, tc, 0.9);
+      g.strokeEllipse(x, y + 4, 22, 9);
       if (this.selection.has(u.id)) {
-        g.lineStyle(2, 0x9bff8a, 0.95);
-        g.strokeEllipse(x, y + 3, 26, 12);
+        g.lineStyle(2.5, 0x9bff8a, 1);
+        g.strokeEllipse(x, y + 4, 28, 13);
       }
       if (u.hp < u.maxHp || this.selection.has(u.id)) {
         const w = 24;
@@ -179,9 +208,6 @@ export class UnitsLayer {
           g.fillRect(x - w / 2, y - 40, w * Math.min(1, u.shield / cap), 2);
         }
       }
-      // 팀 점 표시
-      g.fillStyle(teamColor(u.player), 1);
-      g.fillCircle(x, y + 6, 2);
     }
     for (const b of this.state.buildings) {
       if (b.hp <= 0) continue;

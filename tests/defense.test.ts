@@ -56,12 +56,14 @@ describe('디펜스 모드', () => {
     // 강력한 수비군 배치 + 빠른 검증을 위해 2웨이브로 축소
     state.defense!.totalWaves = 2;
     state.defense!.waveIntervalTicks = 800;
-    for (let i = 0; i < 14; i++) spawnUnit(state, 0, 'elite', 18 + (i % 7), 16 + Math.floor(i / 7));
+    // 스폰 앵커(상단 중앙) 근처에 정예 배치 → 웨이브를 입구에서 즉시 요격
+    const spawn = state.map.starts[1];
+    for (let i = 0; i < 16; i++) spawnUnit(state, 0, 'elite', spawn.x - 4 + (i % 8), spawn.y + 2 + Math.floor(i / 8));
     let ticks = 0;
-    while (state.winner === -1 && ticks < 15000) {
+    while (state.winner === -1 && ticks < 30000) {
       step(state, []);
       ticks++;
     }
     expect(state.winner, `winner=${state.winner} wave=${state.defense?.wave} ticks=${ticks}`).toBe(0);
-  }, 30000);
+  }, 40000);
 });

@@ -34,6 +34,18 @@ export interface GameState {
   recentDeaths: { player: PlayerId; role: UnitRole; tick: number }[];
   /** 디펜스 모드 상태 (없으면 일반 대전) */
   defense?: import('./defense').DefenseState;
+  /** 시각 전용 fx 이벤트 (발사체 등) — 렌더가 소비. 결정성 해시 제외, 헤드리스는 미축적 */
+  fx: FxEvent[];
+  /** fx 축적 여부 (렌더 모드 true, 헤드리스 false) */
+  emitFx: boolean;
+}
+
+export interface FxEvent {
+  kind: 'arrow' | 'bolt' | 'cannon' | 'magic' | 'heal' | 'smite';
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 export function createPlayer(faction: FactionId): PlayerState {
@@ -68,6 +80,8 @@ export function createState(map: WorldMap, seed: number, factions: [FactionId, F
     grid: new SpatialGrid(map.width),
     revealers: [],
     recentDeaths: [],
+    fx: [],
+    emitFx: false,
   };
   for (const spot of map.mineSpots) {
     const mine: GoldMine = {
@@ -141,4 +155,11 @@ export function buildingCenter(b: Building): { x: number; y: number } {
 
 export function mineCenter(m: GoldMine): { x: number; y: number } {
   return { x: m.tileX + m.w / 2, y: m.tileY + m.h / 2 };
+}
+
+/** 시각 fx 발행 (렌더 모드에서만 축적, 헤드리스는 무시 — 코어 결정성 무관) */
+export function emitFxEvent(state: GameState, fx: FxEvent): void {
+  if (!state.emitFx) return;
+  state.fx.push(fx);
+  if (state.fx.length > 300) state.fx.shift();
 }

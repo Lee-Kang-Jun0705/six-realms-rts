@@ -1,7 +1,7 @@
 // 종족 스펠 핸들러 — 악용 차단 규칙 §2.2 적용 (소환캡/매혹 소유권/환급 제외)
 
 import type { GameState } from './state';
-import { findUnit, spawnUnit } from './state';
+import { emitFxEvent, findUnit, spawnUnit } from './state';
 import type { Command, Unit } from './types';
 import { SPELLS, SUMMON_CAP, type SpellDef } from '../data/spells';
 import { registerSpell } from './spells';
@@ -197,6 +197,7 @@ export function registerFactionSpells(): void {
     const caster = readyCaster(state, cmd, def);
     if (!caster) return false;
     caster.spellCooldowns[def.id] = def.cooldown;
+    emitFxEvent(state, { kind: 'magic', x0: caster.x, y0: caster.y - 0.4, x1: cmd.x, y1: cmd.y });
     for (const n of enemiesAround(state, cmd.player, cmd.x, cmd.y, def.params.radius)) {
       damageUnit(state, caster, n, def.params.damage);
     }
@@ -271,6 +272,7 @@ export function registerFactionSpells(): void {
     if (!target || effectivePlayer(target) === cmd.player) return false;
     if (distSq(caster.x, caster.y, target.x, target.y) > def.range * def.range) return false;
     caster.spellCooldowns[def.id] = def.cooldown;
+    emitFxEvent(state, { kind: 'smite', x0: target.x, y0: target.y - 4, x1: target.x, y1: target.y });
     damageUnit(state, caster, target, def.params.damage);
     return true;
   });

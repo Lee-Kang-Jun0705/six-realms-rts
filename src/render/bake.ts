@@ -16,6 +16,22 @@ export function unitKey(faction: FactionId, role: UnitRole, motion: Motion, fram
   return `u-${faction}-${role}-${motion}-${frame}`;
 }
 
+/** AI 생성 정적 유닛 이미지 키 (있으면 절차 드로잉보다 우선) */
+export function unitImageKey(faction: FactionId, role: UnitRole): string {
+  return `uimg-${faction}-${role}`;
+}
+
+// elite는 cavalry 이미지 재사용(정예 전환형) — 별도 에셋 없을 때
+const IMAGE_ROLES: UnitRole[] = ['worker', 'melee', 'ranged', 'cavalry', 'siege', 'caster'];
+
+/** public/units/{faction}-{role}.png 가 있으면 preload (없으면 onerror로 조용히 스킵) */
+export function preloadUnitImages(scene: Phaser.Scene, faction: FactionId): void {
+  for (const role of IMAGE_ROLES) {
+    scene.load.image(unitImageKey(faction, role), `units/${faction}-${role}.png`);
+  }
+  scene.load.image(unitImageKey(faction, 'elite'), `units/${faction}-cavalry.png`);
+}
+
 export function buildingKey(faction: FactionId, kind: BuildingKind, tier: number): string {
   return kind === 'hq' ? `b-${faction}-hq-t${tier}` : `b-${faction}-${kind}`;
 }

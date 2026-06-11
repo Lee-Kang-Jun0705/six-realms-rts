@@ -125,3 +125,28 @@ describe('마계 스펠 + 악용 차단 규칙', () => {
     if (found) expect(found.hp).toBeGreaterThanOrEqual(hpLow - found.maxHp); // 살아있음 = 흡혈 작동 방증
   });
 });
+
+describe('발사체 fx (시각 전용, 결정성 무관)', () => {
+  it('emitFx=true일 때 원거리 공격이 화살 fx 발행', async () => {
+    const { createGame, step } = await import('../src/core/game');
+    const { spawnUnit } = await import('../src/core/state');
+    const { buildTestMap } = await import('../src/data/maps');
+    const state = createGame({ mapAscii: buildTestMap(), seed: 5, factions: ['psion', 'demon'] });
+    state.emitFx = true;
+    spawnUnit(state, 0, 'ranged', 20, 15);
+    spawnUnit(state, 1, 'melee', 22, 15);
+    for (let i = 0; i < 120; i++) step(state, []);
+    expect(state.fx.some((f) => f.kind === 'arrow')).toBe(true);
+  });
+
+  it('emitFx=false(헤드리스 기본)는 fx 미축적 — 결정성/메모리 안전', async () => {
+    const { createGame, step } = await import('../src/core/game');
+    const { spawnUnit } = await import('../src/core/state');
+    const { buildTestMap } = await import('../src/data/maps');
+    const state = createGame({ mapAscii: buildTestMap(), seed: 5, factions: ['psion', 'demon'] });
+    spawnUnit(state, 0, 'ranged', 20, 15);
+    spawnUnit(state, 1, 'melee', 22, 15);
+    for (let i = 0; i < 120; i++) step(state, []);
+    expect(state.fx.length).toBe(0);
+  });
+});
