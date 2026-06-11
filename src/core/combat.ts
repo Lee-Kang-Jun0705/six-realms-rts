@@ -1,7 +1,7 @@
 // 전투 — 타겟 획득(최근접+id tie-break)/추격/윈드업/데미지/스플래시/사망 (플랜 §2)
 
 import type { GameState } from './state';
-import { buildingCenter, emitFxEvent, findBuilding, findUnit } from './state';
+import { buildingCenter, emitFxEvent, findBuilding, findUnit, sameTeam } from './state';
 import type { Building, Unit } from './types';
 import { ARMOR_PER_LV, BUILDING_STATS, UNIT_STATS, WEAPON_DMG_PER_LV } from '../data/baseline';
 import { destroyBuilding } from './building';
@@ -73,7 +73,7 @@ function nearestEnemyUnit(state: GameState, u: Unit, range: number, scratch: Uni
   let bestD = Infinity;
   const me = effectivePlayer(u);
   for (const n of scratch) {
-    if (n.state === 'dead' || effectivePlayer(n) === me) continue;
+    if (n.state === 'dead' || sameTeam(state, effectivePlayer(n), me)) continue;
     if (!isTargetable(state, n, me)) continue;
     const d = distSq(u.x, u.y, n.x, n.y);
     if (d < bestD) {
@@ -89,7 +89,7 @@ function nearestEnemyBuilding(state: GameState, u: Unit, range: number): Buildin
   let bestD = Infinity;
   const r2 = range * range;
   for (const b of state.buildings) {
-    if (b.hp <= 0 || b.player === effectivePlayer(u)) continue;
+    if (b.hp <= 0 || sameTeam(state, b.player, effectivePlayer(u))) continue;
     const c = buildingCenter(b);
     const d = distSq(u.x, u.y, c.x, c.y);
     if (d <= r2 && d < bestD) {
@@ -129,7 +129,7 @@ export function isTargetable(state: GameState, target: Unit, byPlayer: number): 
   if (!hasBuff(target, 'stealth') && !hasBuff(target, 'disguise')) return true;
   const detectRange = BUILDING_STATS.tower.vision;
   for (const b of state.buildings) {
-    if (b.player !== byPlayer || b.kind !== 'tower' || b.hp <= 0 || b.buildProgress < 1) continue;
+    if (!sameTeam(state, b.player, byPlayer) || b.kind !== 'tower' || b.hp <= 0 || b.buildProgress < 1) continue;
     const c = buildingCenter(b);
     if (distSq(target.x, target.y, c.x, c.y) <= detectRange * detectRange) return true;
   }
@@ -229,7 +229,7 @@ function splashAround(state: GameState, u: Unit, x: number, y: number, radius: n
   const scratch: Unit[] = [];
   state.grid.query(x, y, radius, scratch);
   for (const n of scratch) {
-    if (n.id === excludeId || n.state === 'dead' || effectivePlayer(n) === effectivePlayer(u)) continue;
+    if (n.id === excludeId || n.state === 'dead' || sameTeam(state, effectivePlayer(n), effectivePlayer(u))) continue;
     damageUnit(state, u, n, Math.floor(dmg * 0.6));
   }
 }
@@ -321,7 +321,7 @@ function towerTick(state: GameState, attacks: QueuedAttack[]): void {
     let best: Unit | null = null;
     let bestD = Infinity;
     for (const n of scratch) {
-      if (n.state === 'dead' || effectivePlayer(n) === b.player) continue;
+      if (n.state === 'dead' || sameTeam(state, effectivePlayer(n), b.player)) continue;
       // 타워 = 디텍터: 은신도 직접 공격 가능 (§2.1)
       const d = distSq(c.x, c.y, n.x, n.y);
       if (d < bestD) {

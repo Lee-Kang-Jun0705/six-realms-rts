@@ -100,6 +100,11 @@ export function createState(
   return state;
 }
 
+/** 두 플레이어가 같은 팀인가 (적/아군 판정 SSOT). 1v1=항상 다른 팀, 3v3=팀 단위 */
+export function sameTeam(state: GameState, a: PlayerId, b: PlayerId): boolean {
+  return state.teams[a] === state.teams[b];
+}
+
 export function spawnUnit(state: GameState, player: PlayerId, role: UnitRole, x: number, y: number, isSummoned = false): Unit {
   const s = UNIT_STATS[role];
   const faction = state.players[player].faction;

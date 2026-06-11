@@ -13,10 +13,12 @@ export function hasProductionBuilding(state: GameState, player: number): boolean
 
 export function victoryTick(state: GameState): void {
   if (state.winner !== -1) return;
-  const p0Dead = state.players[0].defeated || !hasProductionBuilding(state, 0);
-  const p1Dead = state.players[1].defeated || !hasProductionBuilding(state, 1);
-  if (p0Dead && p1Dead) state.winner = -2;
-  else if (p0Dead) state.winner = 1;
-  else if (p1Dead) state.winner = 0;
+  // 팀별 생존: 팀 내 한 명이라도 생산건물 보유 + 미패배면 팀 생존 (1v1=각자팀, 3v3=팀 단위)
+  const aliveTeams = new Set<number>();
+  for (let p = 0; p < state.players.length; p++) {
+    if (!state.players[p].defeated && hasProductionBuilding(state, p)) aliveTeams.add(state.teams[p]);
+  }
+  if (aliveTeams.size === 0) state.winner = -2;
+  else if (aliveTeams.size === 1) state.winner = state.teams.indexOf([...aliveTeams][0]); // 승리팀 대표 player
   else if (state.tick >= MAX_GAME_TICKS) state.winner = -2;
 }
