@@ -118,6 +118,22 @@ export function buildTickAi(state: GameState, me: PlayerId, mem: AiMemory, bo: B
   }
 }
 
+/** 빌드오더의 도달했지만 미보유한 T2 생산건물(hall/magetower) 비용 — 유닛 생산이 캐스터·기동 건물을 굶기지 않게 예약
+ * (리서치 §4-3: 캐스터 미생산 악순환 차단 — magetower 없음→caster skip→유닛 소진→영영 못 지음) */
+function reservedForBuildings(state: GameState, me: PlayerId, bo: BuildOrder): { gold: number; wood: number } {
+  const p = state.players[me];
+  const have: Partial<Record<BuildingKind, number>> = {};
+  for (const b of myBuildings(state, me)) have[b.kind] = (have[b.kind] ?? 0) + 1;
+  // 가장 임박한 미보유 T2 생산건물 1개만 예약 (과예약 시 유닛 생산 마비 방지 — 지으면 다음 건물로)
+  for (const s of bo.steps) {
+    if (s.action.kind !== 'build') continue;
+    const k = s.action.building;
+    if ((k !== 'hall' && k !== 'magetower') || (have[k] ?? 0) >= 1 || p.supply < s.atSupply) continue;
+    return { gold: BUILDING_STATS[k].cost.gold, wood: BUILDING_STATS[k].cost.wood };
+  }
+  return { gold: 0, wood: 0 };
+}
+
 /** 지속 생산: 조합 가중치 대비 부족 역할 훈련 */
 export function productionTickAi(state: GameState, me: PlayerId, bo: BuildOrder, cmds: Command[]): void {
   const p = state.players[me];
@@ -126,6 +142,7 @@ export function productionTickAi(state: GameState, me: PlayerId, bo: BuildOrder,
   for (const u of army) counts[u.role] = (counts[u.role] ?? 0) + 1;
   const totalWeight = Object.values(bo.composition).reduce((a, b) => a + b, 0) || 1;
   const totalArmy = army.length + 1;
+  const reserve = reservedForBuildings(state, me, bo); // T2 생산건물 자원 예약
   // 부족도 내림차순으로 시도 — 최우선 역할이 티어/건물/자원 게이트에 걸리면 다음 역할로 폴백
   const ranked = (Object.entries(bo.composition) as [UnitRole, number][])
     .map(([role, w]) => {
@@ -137,7 +154,7 @@ export function productionTickAi(state: GameState, me: PlayerId, bo: BuildOrder,
     .sort((a, b) => b.deficit - a.deficit || a.role.localeCompare(b.role)); // tie-break 결정성
   for (const { role } of ranked) {
     const stats = UNIT_STATS[role];
-    if (p.gold < stats.cost.gold || p.wood < stats.cost.wood) continue;
+    if (p.gold - reserve.gold < stats.cost.gold || p.wood - reserve.wood < stats.cost.wood) continue;
     if (stats.requiresTier > playerTier(state, me)) continue;
     const host = myBuildings(state, me).find(
       (b) => b.buildProgress >= 1 && BUILDING_STATS[b.kind].trains.includes(role) && b.queue.length < 2,

@@ -8,6 +8,8 @@ const SPEED = 520; // px/s (줌 1 기준)
 
 export class CameraControls {
   private keys: Record<string, Phaser.Input.Keyboard.Key>;
+  private clock = 0; // 렌더 누적 시계 (ms)
+  private lastManual = -1e9; // 마지막 수동 조작 시각
 
   constructor(private scene: Phaser.Scene, mapW: number, mapH: number) {
     const cam = scene.cameras.main;
@@ -20,6 +22,7 @@ export class CameraControls {
     scene.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       const z = Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.5, 2.4);
       cam.setZoom(z);
+      this.lastManual = this.clock; // 줌도 수동 조작
     });
   }
 
@@ -27,8 +30,14 @@ export class CameraControls {
     this.scene.cameras.main.centerOn(x, y);
   }
 
+  /** 최근 windowMs 내 수동 카메라 조작이 있었나 (관전 액션캠 양보용) */
+  recentlyManual(windowMs: number): boolean {
+    return this.clock - this.lastManual < windowMs;
+  }
+
   update(deltaMs: number): void {
     const cam = this.scene.cameras.main;
+    this.clock += deltaMs;
     const dt = deltaMs / 1000;
     const v = (SPEED * dt) / cam.zoom;
     let dx = 0;
@@ -48,6 +57,7 @@ export class CameraControls {
     if (dx !== 0 || dy !== 0) {
       cam.scrollX += dx;
       cam.scrollY += dy;
+      this.lastManual = this.clock; // 수동 이동 기록
     }
   }
 }

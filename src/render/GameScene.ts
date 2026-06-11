@@ -153,6 +153,7 @@ export class GameScene extends Phaser.Scene {
   /** 교전 지점 자동 추적: 가장 가까운 적대 유닛 쌍의 중점으로 부드럽게 이동 */
   private updateActionCam(delta: number): void {
     if (this.cfg.mode !== 'spectate' || !this.actionCam) return;
+    if (this.cam.recentlyManual(4000)) { this.camTimer = 0; return; } // 수동 조작 4초간 양보
     this.camTimer += delta;
     if (this.camTimer < 1200) return;
     this.camTimer = 0;

@@ -4,31 +4,44 @@
 import type { FactionId, UnitRole } from '../core/types';
 import type { BuildOrder, BuildStep } from '../core/ai/types';
 
+// 러시: 초반 압박 → 중반 테크 전환 (Liquipedia "좋은 러시는 올인이 아니다" — 실패 시 운영 전환 경로 내장)
 const RUSH_STEPS: BuildStep[] = [
-  { atSupply: 5, action: { kind: 'workersTarget', n: 9 } },
+  { atSupply: 5, action: { kind: 'workersTarget', n: 10 } },
   { atSupply: 6, action: { kind: 'build', building: 'barracks' } },
   { atSupply: 8, action: { kind: 'build', building: 'farm' } },
-  { atSupply: 12, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 11, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 14, action: { kind: 'tierUp' } }, // 압박 후 테크 전환
+  { atSupply: 16, action: { kind: 'build', building: 'hall' } }, // 기동/공성(카운터)
+  { atSupply: 19, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 21, action: { kind: 'build', building: 'magetower' } }, // 캐스터
+  { atSupply: 24, action: { kind: 'build', building: 'forge' } },
 ];
+// 확장: 경제 우선 → 풀조합 물량 (T2 건물 전부 + 업그레이드)
 const ECO_STEPS: BuildStep[] = [
-  { atSupply: 5, action: { kind: 'workersTarget', n: 14 } },
+  { atSupply: 5, action: { kind: 'workersTarget', n: 16 } },
   { atSupply: 7, action: { kind: 'build', building: 'farm' } },
   { atSupply: 9, action: { kind: 'build', building: 'barracks' } },
-  { atSupply: 13, action: { kind: 'build', building: 'forge' } },
-  { atSupply: 15, action: { kind: 'build', building: 'farm' } },
-  { atSupply: 16, action: { kind: 'upgrade', id: 'weapon' } },
-  { atSupply: 18, action: { kind: 'build', building: 'barracks' } },
-  { atSupply: 20, action: { kind: 'tierUp' } },
-  { atSupply: 22, action: { kind: 'build', building: 'magetower' } },
+  { atSupply: 12, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 14, action: { kind: 'tierUp' } },
+  { atSupply: 16, action: { kind: 'build', building: 'hall' } },
+  { atSupply: 17, action: { kind: 'build', building: 'forge' } },
+  { atSupply: 18, action: { kind: 'build', building: 'magetower' } },
+  { atSupply: 19, action: { kind: 'upgrade', id: 'weapon' } },
+  { atSupply: 22, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 25, action: { kind: 'build', building: 'farm' } },
 ];
+// 테크: 빠른 고급 조합 (조기 T2 + 전 생산건물)
 const TECH_STEPS: BuildStep[] = [
   { atSupply: 5, action: { kind: 'workersTarget', n: 12 } },
   { atSupply: 7, action: { kind: 'build', building: 'barracks' } },
   { atSupply: 9, action: { kind: 'build', building: 'farm' } },
-  { atSupply: 12, action: { kind: 'tierUp' } },
-  { atSupply: 14, action: { kind: 'build', building: 'magetower' } },
-  { atSupply: 15, action: { kind: 'build', building: 'farm' } },
-  { atSupply: 16, action: { kind: 'build', building: 'hall' } },
+  { atSupply: 11, action: { kind: 'tierUp' } },
+  { atSupply: 13, action: { kind: 'build', building: 'hall' } },
+  { atSupply: 15, action: { kind: 'build', building: 'magetower' } },
+  { atSupply: 16, action: { kind: 'build', building: 'farm' } },
+  { atSupply: 18, action: { kind: 'build', building: 'forge' } },
+  { atSupply: 20, action: { kind: 'upgrade', id: 'weapon' } },
+  { atSupply: 22, action: { kind: 'build', building: 'farm' } },
 ];
 
 interface FactionFlavor {
@@ -43,36 +56,38 @@ interface FactionFlavor {
   tempo: number;
 }
 
+// 조합 = 역할 믹스(전열/딜러/캐스터/카운터) + 종족 특색(차별화 레이어).
+// 모든 빌드오더가 caster 포함, eco/tech는 cavalry/siege도 — "근접/원거리만" 차단 (리서치 §1 역할 템플릿)
 const FLAVORS: Record<Exclude<FactionId, 'dummy'>, FactionFlavor> = {
   psion: {
     ko: '초능력자', rushKo: '사이킥 러시', ecoKo: '확장 운영', techKo: '폭풍 테크',
-    rush: { melee: 3, ranged: 4 }, eco: { melee: 2, ranged: 5, caster: 1 },
-    tech: { melee: 2, ranged: 3, cavalry: 2, caster: 1 }, tempo: 1.0,
+    rush: { melee: 3, ranged: 4, caster: 1 }, eco: { melee: 2, ranged: 4, cavalry: 1, caster: 2 },
+    tech: { melee: 2, ranged: 3, cavalry: 1, siege: 1, caster: 2 }, tempo: 1.0, // 원거리·캐스터 특화
   },
   murim: {
     ko: '무림', rushKo: '쾌검 러시', ecoKo: '문파 운영', techKo: '기공 테크',
-    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3, caster: 1 },
-    tech: { melee: 3, cavalry: 2, caster: 1 }, tempo: 0.92, // 이속 패시브 = 빠른 템포
+    rush: { melee: 4, ranged: 1, cavalry: 1, caster: 1 }, eco: { melee: 4, ranged: 2, cavalry: 2, caster: 1 },
+    tech: { melee: 3, ranged: 1, cavalry: 3, caster: 2 }, tempo: 0.92, // 근접·기동 특화 (이속 패시브)
   },
   fantasy: {
     ko: '판타지', rushKo: '검방 러시', ecoKo: '왕국 운영', techKo: '마법 테크',
-    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
-    tech: { melee: 2, ranged: 2, cavalry: 2, siege: 1, caster: 1 }, tempo: 1.05, // 방어 패시브 = 수비적
+    rush: { melee: 4, ranged: 3, caster: 1 }, eco: { melee: 3, ranged: 3, cavalry: 1, caster: 2 },
+    tech: { melee: 3, ranged: 2, cavalry: 1, siege: 2, caster: 2 }, tempo: 1.05, // 균형·공성 (방어 패시브)
   },
   yokai: {
     ko: '요괴', rushKo: '백귀 러시', ecoKo: '둔갑 운영', techKo: '매혹 테크',
-    rush: { melee: 4, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
-    tech: { melee: 2, ranged: 2, cavalry: 3, caster: 1 }, tempo: 0.95, // 숲 통과 기습
+    rush: { melee: 4, ranged: 2, cavalry: 2 }, eco: { melee: 3, ranged: 3, cavalry: 2, caster: 1 },
+    tech: { melee: 2, ranged: 2, cavalry: 3, caster: 2 }, tempo: 0.95, // 기동·기습 (숲 통과)
   },
   demon: {
     ko: '마계', rushKo: '군단 러시', ecoKo: '마기 회수 운영', techKo: '소환 테크',
-    rush: { melee: 5, ranged: 2 }, eco: { melee: 4, ranged: 3, caster: 1 },
-    tech: { melee: 3, cavalry: 2, siege: 1, caster: 1 }, tempo: 0.93, // 환급 = 물량전
+    rush: { melee: 5, ranged: 2, caster: 1 }, eco: { melee: 4, ranged: 2, cavalry: 1, caster: 2 },
+    tech: { melee: 3, ranged: 2, cavalry: 2, siege: 1, caster: 2 }, tempo: 0.93, // 물량·소환 (환급)
   },
   celestial: {
     ko: '천계', rushKo: '심판 러시', ecoKo: '성역 운영', techKo: '부활 테크',
-    rush: { melee: 3, ranged: 3 }, eco: { melee: 3, ranged: 4, caster: 1 },
-    tech: { melee: 2, ranged: 2, cavalry: 2, caster: 1 }, tempo: 1.1, // 고코스트 후반 지향
+    rush: { melee: 3, ranged: 3, caster: 1 }, eco: { melee: 3, ranged: 3, cavalry: 1, caster: 2 },
+    tech: { melee: 2, ranged: 3, cavalry: 2, siege: 1, caster: 2 }, tempo: 1.1, // 고급·후반 지향
   },
 };
 
