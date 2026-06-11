@@ -1,6 +1,6 @@
 // 게임 루프 오케스트레이터 — createGame / step (브라우저·헤드리스 공용 진입점)
 
-import type { FactionId, Command, GoldMine } from './types';
+import type { FactionId, Command, GoldMine, TeamId } from './types';
 import type { GameState } from './state';
 import { addBuilding, createState, mineCenter, spawnUnit } from './state';
 import { occupyRect, parseMap } from './map';
@@ -21,7 +21,10 @@ import { distSq } from './vec';
 export interface GameConfig {
   mapAscii: string;
   seed: number;
-  factions: [FactionId, FactionId];
+  /** 2인(1v1) 또는 6인(3v3) 등 가변. 길이 = 플레이어 수 */
+  factions: FactionId[];
+  /** 플레이어 → 팀 매핑. 미지정 = 각자 팀 (1v1/FFA). 3v3 = [0,0,0,1,1,1] */
+  teams?: TeamId[];
   /** 디펜스 모드: P1 기지 제거 + 웨이브 디렉터 활성화 */
   defense?: boolean;
 }
@@ -29,8 +32,8 @@ export interface GameConfig {
 export function createGame(cfg: GameConfig): GameState {
   registerFactionSpells(); // 멱등 — 레지스트리 갱신
   const map = parseMap(cfg.mapAscii);
-  const state = createState(map, cfg.seed, cfg.factions);
-  for (const player of [0, 1] as const) {
+  const state = createState(map, cfg.seed, cfg.factions, cfg.teams);
+  for (let player = 0; player < state.players.length; player++) {
     const start = map.starts[player];
     const hq = addBuilding(state, player, 'hq', start.x - 1, start.y - 1, true);
     occupyRect(state.map, hq.id, hq.tileX, hq.tileY, hq.w, hq.h);
@@ -91,7 +94,7 @@ export function step(state: GameState, commands: Command[]): void {
 
 function updateFog(state: GameState): void {
   state.revealers = state.revealers.filter((r) => r.untilTick > state.tick);
-  for (const player of [0, 1] as const) {
+  for (let player = 0; player < state.players.length; player++) {
     const fog = state.fog[player];
     fog.beginUpdate();
     for (const u of state.units) {

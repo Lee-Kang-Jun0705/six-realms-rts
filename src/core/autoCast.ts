@@ -2,6 +2,7 @@
 // AI/플레이어 공용: 교전 중 캐스터가 조건 충족 시 자동 시전 (8틱 스로틀)
 
 import type { GameState } from './state';
+import { sameTeam } from './state';
 import type { Unit } from './types';
 import { spellsOf } from '../data/spells';
 import { castSpell } from './spells';
@@ -128,7 +129,7 @@ function countEnemies(state: GameState, player: number, x: number, y: number, ra
   const scratch: Unit[] = [];
   state.grid.query(x, y, radius, scratch);
   let n = 0;
-  for (const e of scratch) if (e.state !== 'dead' && effectivePlayer(e) !== player) n++;
+  for (const e of scratch) if (e.state !== 'dead' && !sameTeam(state, effectivePlayer(e), player)) n++;
   return n;
 }
 
@@ -138,7 +139,7 @@ function nearestEnemy(state: GameState, player: number, caster: Unit, range: num
   let best: Unit | null = null;
   let bestD = Infinity;
   for (const e of scratch) {
-    if (e.state === 'dead' || effectivePlayer(e) === player) continue;
+    if (e.state === 'dead' || sameTeam(state, effectivePlayer(e), player)) continue;
     const d = distSq(caster.x, caster.y, e.x, e.y);
     if (d < bestD) {
       bestD = d;

@@ -4,12 +4,30 @@ import type { GameState } from '../state';
 import type { PlayerId } from '../types';
 import type { Intel } from './types';
 import { UNIT_STATS } from '../../data/baseline';
-import { buildingCenter } from '../state';
+import { buildingCenter, sameTeam } from '../state';
 import { distSq } from '../vec';
+
+/** 내 본진에서 가장 가까운 적 팀 시작점 (1v1=상대, 3v3=최근접 적 본진) */
+function nearestEnemyStart(state: GameState, me: PlayerId): { x: number; y: number } {
+  const mine = state.map.starts[me];
+  let best = state.map.starts[me === 0 ? 1 : 0] ?? mine;
+  let bestD = Infinity;
+  for (let p = 0; p < state.players.length; p++) {
+    if (sameTeam(state, p, me)) continue;
+    const s = state.map.starts[p];
+    if (!s) continue;
+    const d = distSq(s.x, s.y, mine.x, mine.y);
+    if (d < bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  return best;
+}
 
 export function createIntel(state: GameState, me: PlayerId): Intel {
   // 맵 시작 위치는 공개 정보 (래더 맵 상식) — 적 본진 추정만 시드
-  const enemyStart = state.map.starts[me === 0 ? 1 : 0];
+  const enemyStart = nearestEnemyStart(state, me);
   return {
     enemyBasePos: { x: enemyStart.x, y: enemyStart.y },
     enemySeenBarracks: 0,
@@ -29,14 +47,13 @@ export function unitValue(role: string): number {
 /** 매 의사결정 주기 호출 — 보이는 것만으로 인텔 갱신 */
 export function updateIntel(state: GameState, me: PlayerId, intel: Intel): void {
   const fog = state.fog[me];
-  const enemy = me === 0 ? 1 : 0;
   let seenArmy = 0;
   let barracks = 0;
   let towers = 0;
   let tier = 1;
 
   for (const b of state.buildings) {
-    if (b.player !== enemy || b.hp <= 0) continue;
+    if (sameTeam(state, b.player, me) || b.hp <= 0) continue;
     if (!fog.isExplored(b.tileX + 1, b.tileY + 1)) continue;
     if (b.kind === 'barracks') barracks++;
     if (b.kind === 'tower') towers++;
@@ -47,7 +64,7 @@ export function updateIntel(state: GameState, me: PlayerId, intel: Intel): void 
   let threat = 0;
   const myHq = state.buildings.find((b) => b.player === me && b.kind === 'hq' && b.hp > 0);
   for (const u of state.units) {
-    if (u.player !== enemy || u.state === 'dead' || u.role === 'worker') continue;
+    if (sameTeam(state, u.player, me) || u.state === 'dead' || u.role === 'worker') continue;
     if (!fog.isVisible(Math.floor(u.x), Math.floor(u.y))) continue;
     const v = unitValue(u.role);
     seenArmy += v;
