@@ -5,7 +5,7 @@ import type { GameState } from '../core/state';
 import type { Unit } from '../core/types';
 import type { SimRunner } from './SimRunner';
 import { MOTION_FRAMES, type Motion } from './artUnits';
-import { buildingImageKey, buildingKey, unitImageKey, unitKey } from './bake';
+import { buildingImageKey, buildingKey, objectImageKey, unitImageKey, unitKey } from './bake';
 import { BUILDING_PAD } from './artBuildings';
 import { COL, teamColor } from './palette';
 import { TILE } from '../core/const';
@@ -65,7 +65,7 @@ export class UnitsLayer {
       if (!v) {
         const startKey = useImage ? unitImageKey(u.faction, u.role) : unitKey(u.faction, u.role, 'idle', 0);
         const sprite = this.scene.add.image(0, 0, startKey).setOrigin(0.5, 0.875);
-        if (useImage) sprite.setDisplaySize(40, 40); // 256px 원본 → 약 1.25타일 표시
+        if (useImage) sprite.setDisplaySize(46, 46); // 256px 고퀄 원본 → 전신 디테일 보이게 약 1.4타일
         v = { sprite, faction: u.faction, role: u.role, player: u.player, facing: 1, lastX: u.x, lastY: u.y };
         this.views.set(u.id, v);
       }
@@ -184,19 +184,35 @@ export class UnitsLayer {
   }
 
   private syncMines(): void {
+    const aiKey = objectImageKey('mine');
+    const hasAi = this.scene.textures.exists(aiKey);
     for (const m of this.state.mines) {
       let v = this.mineViews.get(m.id);
       if (!v) {
-        const sprite = this.scene.add
-          .image(m.tileX * TILE - BUILDING_PAD, m.tileY * TILE - BUILDING_PAD - 10, 'mine')
-          .setOrigin(0, 0)
-          .setDepth((m.tileY + m.h) * TILE);
+        let sprite: Phaser.GameObjects.Image;
+        if (hasAi) {
+          // AI 금광: 풋프린트 중심 배치 + 약간 크게(입체 여유)
+          const cx = (m.tileX + m.w / 2) * TILE;
+          const cy = (m.tileY + m.h / 2) * TILE;
+          const s = (m.w + 0.8) * TILE;
+          sprite = this.scene.add
+            .image(cx, cy, aiKey)
+            .setOrigin(0.5, 0.56)
+            .setDepth((m.tileY + m.h) * TILE);
+          sprite.setDisplaySize(s, s);
+        } else {
+          sprite = this.scene.add
+            .image(m.tileX * TILE - BUILDING_PAD, m.tileY * TILE - BUILDING_PAD - 10, 'mine')
+            .setOrigin(0, 0)
+            .setDepth((m.tileY + m.h) * TILE);
+        }
         v = { sprite, collapsed: false };
         this.mineViews.set(m.id, v);
       }
       if (m.collapsed && !v.collapsed) {
         v.collapsed = true;
-        v.sprite.setTexture('mine-collapsed');
+        if (hasAi) v.sprite.setTint(0x6b6b6b); // 고갈 = 어둡게
+        else v.sprite.setTexture('mine-collapsed');
       }
     }
   }
@@ -230,6 +246,26 @@ export class UnitsLayer {
           const cap = Math.max(1, Math.floor(u.maxHp * 0.15));
           g.fillStyle(0x35f0e0, 1);
           g.fillRect(x - w / 2, barY - 3, w * Math.min(1, u.shield / cap), 2);
+        }
+      }
+      // 자원 운반 표시 (SCV처럼 들고 가는 자원 — 일꾼 어깨 옆 작은 아이콘)
+      if (u.cargo) {
+        const ix = x + 11;
+        const iy = y - 24;
+        if (u.cargo === 'gold') {
+          g.fillStyle(0x000000, 0.5);
+          g.fillCircle(ix + 0.5, iy + 0.5, 5);
+          g.fillStyle(0xf5c542, 1);
+          g.fillCircle(ix, iy, 4.5);
+          g.fillStyle(0xffe9a8, 1);
+          g.fillCircle(ix - 1.3, iy - 1.3, 1.6);
+        } else {
+          g.fillStyle(0x000000, 0.5);
+          g.fillRect(ix - 4.5, iy - 3.5, 10, 7);
+          g.fillStyle(0x8a5a2b, 1);
+          g.fillRect(ix - 5, iy - 4, 10, 7);
+          g.fillStyle(0xb07a44, 1);
+          g.fillRect(ix - 5, iy - 4, 10, 2);
         }
       }
     }

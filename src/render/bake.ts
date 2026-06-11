@@ -61,6 +61,15 @@ export function preloadTileImages(scene: Phaser.Scene): void {
   for (const n of TILE_NAMES) scene.load.image(tileImageKey(n), `tiles/${n}.png`);
 }
 
+// AI 맵 오브젝트 (있으면 절차 도형 대신 사용). 키: objimg-{name}
+const OBJECT_NAMES = ['mine'] as const;
+export function objectImageKey(name: string): string {
+  return `objimg-${name}`;
+}
+export function preloadObjectImages(scene: Phaser.Scene): void {
+  for (const n of OBJECT_NAMES) scene.load.image(objectImageKey(n), `objects/${n}.png`);
+}
+
 /** 매치에 등장하는 종족만 베이크 (lazy) */
 export function bakeFaction(scene: Phaser.Scene, faction: FactionId): void {
   const g = scene.add.graphics();
