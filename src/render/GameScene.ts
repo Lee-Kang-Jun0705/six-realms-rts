@@ -98,6 +98,11 @@ export class GameScene extends Phaser.Scene {
     this.minimap.revealAll = cfg.mode === 'spectate';
 
     this.audio = new AudioManager(this);
+    // BGM: 첫 입력(자동재생 정책) 후 시작. 디펜스/관전=긴장, 일반=평시
+    const startBgm = (): void => this.audio.startBgm(cfg.mode === 'defense' ? 'battle' : 'peace');
+    this.input.once('pointerdown', startBgm);
+    this.input.keyboard!.once('keydown', startBgm);
+    this.events.once('shutdown', () => this.audio.bgm.stop());
     const prevSelectionChange = this.inputCtl.onSelectionChange;
     this.inputCtl.onSelectionChange = () => {
       prevSelectionChange();

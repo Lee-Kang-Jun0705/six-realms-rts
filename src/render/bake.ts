@@ -4,6 +4,7 @@
 import Phaser from 'phaser';
 import type { BuildingKind, FactionId, UnitRole } from '../core/types';
 import { BUILDING_STATS } from '../data/baseline';
+import { hasUnitImages } from '../data/unitManifest';
 import { MOTION_FRAMES, UNIT_CANVAS, drawUnitFrame, type Motion } from './artUnits';
 import { buildingCanvasSize, drawBuilding, drawConstructionSite, drawGoldMine } from './artBuildings';
 import { drawDirt, drawForestTile, drawGrass, drawRock, drawWater } from './artTiles';
@@ -24,8 +25,9 @@ export function unitImageKey(faction: FactionId, role: UnitRole): string {
 // elite는 cavalry 이미지 재사용(정예 전환형) — 별도 에셋 없을 때
 const IMAGE_ROLES: UnitRole[] = ['worker', 'melee', 'ranged', 'cavalry', 'siege', 'caster'];
 
-/** public/units/{faction}-{role}.png 가 있으면 preload (없으면 onerror로 조용히 스킵) */
+/** 보유 종족(매니페스트)만 유닛 이미지 preload — 미보유는 절차 드로잉 폴백 */
 export function preloadUnitImages(scene: Phaser.Scene, faction: FactionId): void {
+  if (!hasUnitImages(faction)) return;
   for (const role of IMAGE_ROLES) {
     scene.load.image(unitImageKey(faction, role), `units/${faction}-${role}.png`);
   }

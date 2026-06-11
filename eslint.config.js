@@ -25,7 +25,7 @@ const coreDeterminismRules = {
 };
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'e2e/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'e2e/**', 'scripts/debug/**'] },
   ...tseslint.configs.recommended,
   {
     files: ['src/core/**/*.ts', 'src/data/**/*.ts'],
